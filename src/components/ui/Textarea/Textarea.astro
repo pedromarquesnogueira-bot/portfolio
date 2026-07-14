@@ -1,0 +1,30 @@
+---
+import styles from "./Textarea.module.css";
+
+interface Props {
+  id?: string;
+  name?: string;
+  value?: string;
+  placeholder?: string;
+  rows?: number;
+  disabled?: boolean;
+}
+
+const {
+  id,
+  name,
+  value = "",
+  placeholder = "",
+  rows = 5,
+  disabled = false,
+} = Astro.props;
+---
+
+<textarea
+  class={styles.textarea}
+  id={id}
+  name={name}
+  placeholder={placeholder}
+  rows={rows}
+  disabled={disabled}
+>{value}</textarea>

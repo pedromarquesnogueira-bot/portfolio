@@ -1,0 +1,176 @@
+---
+import Button from "../../ui/Button";
+import Input from "../../ui/Input";
+import Textarea from "../../ui/Textarea";
+
+import ImageUpload from "./ImageUpload.astro";
+
+import type { Project } from "@models/project";
+
+import styles from "./ProjectForm.module.css";
+
+interface Props {
+  project?: Project | null;
+}
+
+const { project = null } = Astro.props;
+
+const isEdit = project !== null;
+---
+
+<section class={styles.container}>
+  <header class={styles.header}>
+    <div>
+      <h1>
+        {isEdit ? "Editar Projeto" : "Novo Projeto"}
+      </h1>
+
+      <p>
+        {
+          isEdit
+            ? "Edite as informações do projeto."
+            : "Cadastre um novo projeto para o portfólio."
+        }
+      </p>
+    </div>
+
+    <Button
+      type="submit"
+      form="project-form"
+    >
+      Salvar
+    </Button>
+  </header>
+
+  <form
+    id="project-form"
+    class={styles.form}
+    method="POST"
+    action={
+      isEdit
+        ? "/api/projects/update"
+        : "/api/projects/create"
+    }
+  >
+    {
+      isEdit && (
+        <input
+          type="hidden"
+          name="id"
+          value={project.id}
+        />
+      )
+    }
+
+    <input
+      type="hidden"
+      id="cover_image"
+      name="cover_image"
+      value={project?.cover_image ?? ""}
+    />
+
+    <div class={styles.section}>
+      <h2>Informações básicas</h2>
+
+      <div class={styles.grid}>
+        <div>
+          <label for="title">Título</label>
+
+          <Input
+            id="title"
+            name="title"
+            value={project?.title ?? ""}
+            placeholder="Digite o título do projeto"
+          />
+        </div>
+
+        <div>
+          <label for="client">Cliente</label>
+
+          <Input
+            id="client"
+            name="client"
+            value={project?.client ?? ""}
+            placeholder="Digite o nome do cliente"
+          />
+        </div>
+
+        <div>
+          <label for="slug">Slug</label>
+
+          <Input
+            id="slug"
+            name="slug"
+            value={project?.slug ?? ""}
+            placeholder="landing-page-totvs"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class={styles.section}>
+      <h2>Capa do Projeto</h2>
+
+      <ImageUpload
+        id="cover"
+        name="cover"
+        label="Imagem de capa"
+      />
+    </div>
+
+    <div class={styles.section}>
+      <h2>Descrição</h2>
+
+      <label for="description">
+        Descrição
+      </label>
+
+      <Textarea
+        id="description"
+        name="description"
+        value={project?.description ?? ""}
+        placeholder="Digite a descrição do projeto"
+      />
+    </div>
+  </form>
+</section>
+
+<script is:inline>
+const submitButton =
+  document.querySelector<HTMLButtonElement>(
+    'button[form="project-form"]'
+  );
+form?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Salvando...";
+  }
+
+if (!form) return;
+
+const formData = new FormData(form);
+  const response = await fetch(form.action, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    alert(await response.text());
+
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Salvar";
+    }
+
+    return;
+  }
+
+  const project = await response.json();
+
+  window.location.href = `/cms/projetos/${project.id}`;
+});
+</script>

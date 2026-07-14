@@ -1,0 +1,15 @@
+---
+import { getProject } from "@lib/projects";
+
+import ProjectForm from "./ProjectForm.astro";
+
+interface Props {
+  projectId: string;
+}
+
+const { projectId } = Astro.props;
+
+const project = await getProject(projectId);
+---
+
+<ProjectForm project={project} />

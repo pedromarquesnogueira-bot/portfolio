@@ -1,0 +1,44 @@
+---
+import Button from "../../ui/Button";
+import Table from "../../ui/Table";
+
+import ProjectRow from "./ProjectRow.astro";
+
+import { getProjects } from "../../../lib/projects";
+
+import styles from "./ProjectList.module.css";
+
+const projects = await getProjects();
+
+
+---
+
+<section class={styles.container}>
+  <header class={styles.header}>
+    <h1 class={styles.title}>Projetos</h1>
+
+<a href="/cms/projetos/novo">
+  <Button>
+    Adicionar Projeto
+  </Button>
+</a>
+  </header>
+
+  <Table
+    headers={[
+      "",
+      "Thumbnail",
+      "Título",
+      "Data",
+      "Status",
+      "",
+      "",
+    ]}
+  >
+    {
+      projects.map((project) => (
+        <ProjectRow project={project} />
+      ))
+    }
+  </Table>
+</section>

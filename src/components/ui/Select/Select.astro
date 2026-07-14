@@ -1,0 +1,37 @@
+---
+import styles from "./Select.module.css";
+
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  id?: string;
+  name?: string;
+  disabled?: boolean;
+  options: Option[];
+}
+
+const {
+  id,
+  name,
+  disabled = false,
+  options = [],
+} = Astro.props;
+---
+
+<select
+  class={styles.select}
+  id={id}
+  name={name}
+  disabled={disabled}
+>
+  {
+    options.map((option) => (
+      <option value={option.value}>
+        {option.label}
+      </option>
+    ))
+  }
+</select>

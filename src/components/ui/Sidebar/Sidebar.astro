@@ -1,0 +1,35 @@
+---
+import styles from "./Sidebar.module.css";
+
+interface Item {
+  label: string;
+  href: string;
+  active?: boolean;
+}
+
+interface Props {
+  items: Item[];
+}
+
+const { items = [] } = Astro.props;
+---
+<p>Experiência</p>
+<p>Configurações</p>
+
+<aside class={styles.sidebar}>
+  <nav>
+    {
+      items.map((item) => (
+        <a
+          href={item.href}
+          class:list={[
+            styles.link,
+            item.active && styles.active,
+          ]}
+        >
+          {item.label}
+        </a>
+      ))
+    }
+  </nav>
+</aside>

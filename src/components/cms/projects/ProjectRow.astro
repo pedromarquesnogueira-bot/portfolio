@@ -1,0 +1,39 @@
+---
+import Badge from "../../ui/Badge";
+import type { Project } from "../../../types/project";
+
+interface Props {
+  project: Project;
+}
+
+const { project } = Astro.props;
+---
+
+<tr>
+  <td>
+    <input type="checkbox" />
+  </td>
+
+  <td>
+    <img
+      src={project.cover_image ?? "https://placehold.co/80x60"}
+      alt={project.title}
+      width="80"
+      height="60"
+    />
+  </td>
+
+  <td>{project.title}</td>
+
+  <td>{project.created_at}</td>
+
+  <td>
+    <Badge>
+      {project.published ? "Publicado" : "Rascunho"}
+    </Badge>
+  </td>
+
+  <td>Editar</td>
+
+  <td>Excluir</td>
+</tr>

@@ -1,0 +1,19 @@
+.layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+
+    min-height: 100vh;
+}
+
+.main {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+}
+
+.content {
+    flex: 1;
+
+    padding: 32px;
+}

@@ -1,0 +1,115 @@
+---
+
+---
+
+<div class="image-upload">
+  <label class="title">
+    Imagem de capa
+  </label>
+
+  <div class="preview" id="preview">
+    <span>Nenhuma imagem selecionada</span>
+  </div>
+
+  <input
+    type="file"
+    id="image"
+    accept="image/*"
+    hidden
+  />
+
+  <input
+    type="hidden"
+    name="cover_image"
+    id="cover_image"
+  />
+
+  <button
+    type="button"
+    id="select-image"
+  >
+    Selecionar imagem
+  </button>
+</div>
+
+<style>
+.image-upload{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+}
+
+.title{
+    font-weight:600;
+}
+
+.preview{
+    width:100%;
+    aspect-ratio:16/9;
+    border:2px dashed #ddd;
+    border-radius:12px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    overflow:hidden;
+    background:#fafafa;
+}
+
+.preview img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+button{
+    width:max-content;
+}
+</style>
+
+<script>
+const fileInput = document.querySelector<HTMLInputElement>("#image");
+
+const preview = document.querySelector<HTMLDivElement>("#preview");
+
+const hiddenInput =
+  document.querySelector<HTMLInputElement>("#cover_image");
+
+const button =
+  document.querySelector<HTMLButtonElement>("#select-image");
+document.querySelector("#select-image");
+
+button?.addEventListener("click", () => {
+  fileInput?.click();
+});
+
+fileInput?.addEventListener("change", async () => {
+  const file = fileInput.files?.[0];
+
+  if (!file || !preview || !hiddenInput) return;
+
+  preview.innerHTML = "Enviando...";
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/upload/image", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    preview.innerHTML = "Erro ao enviar.";
+    return;
+  }
+
+  const data = await response.json();
+
+  hiddenInput.value = data.secure_url;
+
+  preview.innerHTML = `
+    <img src="${data.secure_url}" alt="Preview">
+  `;
+});
+</script>

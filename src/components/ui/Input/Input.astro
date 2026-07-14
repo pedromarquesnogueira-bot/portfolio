@@ -1,0 +1,40 @@
+---
+import styles from "./Input.module.css";
+
+
+interface Props {
+  id?: string;
+  name?: string;
+  type?:
+    | "text"
+    | "email"
+    | "password"
+    | "number"
+    | "search"
+    | "url"
+    | "tel"
+    | "date";
+  placeholder?: string;
+  value?: string;
+  disabled?: boolean;
+}
+
+const {
+  id,
+  name,
+  type = "text",
+  placeholder = "",
+  value = "",
+  disabled = false,
+} = Astro.props;
+---
+
+<input
+  class={styles.input}
+  id={id}
+  name={name}
+  type={type}
+  placeholder={placeholder}
+  value={value}
+  disabled={disabled}
+/>

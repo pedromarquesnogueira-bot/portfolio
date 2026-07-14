@@ -1,0 +1,34 @@
+---
+import type { Project } from "@models/project";
+
+interface Props {
+  project: Project;
+}
+
+const { project } = Astro.props;
+---
+
+<div class="card">
+  <h2>{project.title}</h2>
+
+  <div class="slug">
+    {project.slug}
+  </div>
+
+  <p>{project.description}</p>
+</div>
+
+<style>
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+}
+
+.slug {
+  color: #777;
+  font-size: 14px;
+}
+</style>

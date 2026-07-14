@@ -1,0 +1,31 @@
+---
+import styles from "./Modal.module.css";
+
+interface Props {
+  title?: string;
+}
+
+const {
+  title = "Modal",
+} = Astro.props;
+---
+
+<div class={styles.overlay}>
+  <div class={styles.modal}>
+    <header class={styles.header}>
+      <h2>{title}</h2>
+
+      <button class={styles.close}>
+        ✕
+      </button>
+    </header>
+
+    <div class={styles.body}>
+      <slot />
+    </div>
+
+    <footer class={styles.footer}>
+      <slot name="footer" />
+    </footer>
+  </div>
+</div>

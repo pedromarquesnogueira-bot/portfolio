@@ -1,0 +1,13 @@
+---
+import styles from "./Card.module.css";
+
+interface Props {
+  padding?: "sm" | "md" | "lg";
+}
+
+const { padding = "md" } = Astro.props;
+---
+
+<div class={`${styles.card} ${styles[padding]}`}>
+  <slot />
+</div>

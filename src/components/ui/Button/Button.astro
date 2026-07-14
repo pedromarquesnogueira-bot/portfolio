@@ -1,0 +1,39 @@
+---
+import styles from "./Button.module.css";
+
+interface Props {
+  variant?: "primary" | "secondary" | "ghost";
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  href?: string;
+  form?: string;
+}
+
+const {
+  variant = "primary",
+  type = "button",
+  disabled = false,
+  href,
+  form,
+} = Astro.props;
+---
+
+{
+  href ? (
+    <a
+      class={`${styles.button} ${styles[variant]}`}
+      href={href}
+    >
+      <slot />
+    </a>
+  ) : (
+    <button
+      class={`${styles.button} ${styles[variant]}`}
+      type={type}
+      form={form}
+      disabled={disabled}
+    >
+      <slot />
+    </button>
+  )
+}
