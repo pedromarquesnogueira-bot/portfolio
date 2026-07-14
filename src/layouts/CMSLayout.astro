@@ -25,8 +25,16 @@ const links = [
 </BaseLayout>
 
 <script>
-  document.querySelector('[data-logout]')?.addEventListener('click', () => sessionStorage.removeItem('portfolio-cms-auth'));
-  if (!sessionStorage.getItem('portfolio-cms-auth') && !location.pathname.endsWith('/login')) location.href = '/cms/login';
+  import { createClient } from "@supabase/supabase-js";
+
+  const supabase = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) location.href = "/cms/login";
+  document.querySelector('[data-logout]')?.addEventListener('click', async (event) => {
+    event.preventDefault();
+    await supabase.auth.signOut();
+    location.href = "/cms/login";
+  });
 </script>
 
 <style>
