@@ -8,12 +8,15 @@ const { page, mode = "list" } = Astro.props;
 </section>
 
 <script>
+  import { createClient } from "@supabase/supabase-js";
+
   type Tag = { id: string; name: string };
   type Tool = { id: string; name: string; color: string };
   type Project = { id: string; title: string; client: string; description: string; status: "draft" | "published"; createdAt: string; tags: string[]; tools: string[]; media: string[] };
   type Experience = { id: string; company: string; role: string; description: string; start: string; end: string; current: boolean; status: "draft" | "published" };
   type Store = { tags: Tag[]; tools: Tool[]; projects: Project[]; experiences: Experience[]; settings: Record<string, string> };
   const key = "pedro-portfolio-cms-v1";
+  const supabase = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
   const uid = () => crypto.randomUUID();
   const defaults = (): Store => ({
     tags: [{ id: uid(), name: "Branding" }, { id: uid(), name: "Design digital" }, { id: uid(), name: "Social media" }],
@@ -21,7 +24,49 @@ const { page, mode = "list" } = Astro.props;
     projects: [], experiences: [], settings: { name: "Pedro Marques", role: "Designer", email: "", whatsapp: "", linkedin: "", behance: "", about: "", siteTitle: "Pedro Marques", seoDescription: "", keywords: "" }
   });
   const load = (): Store => { try { return JSON.parse(localStorage.getItem(key) || "") as Store; } catch { const data = defaults(); localStorage.setItem(key, JSON.stringify(data)); return data; } };
-  const save = (store: Store) => localStorage.setItem(key, JSON.stringify(store));
+  const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const save = (store: Store) => { localStorage.setItem(key, JSON.stringify(store)); void sync(store); };
+  async function sync(store: Store) {
+    const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
+    const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name) }));
+    const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, slug: slugify(project.title), client: project.client || null, description: project.description || null, published: project.status === "published", featured: false, sort_order }));
+    const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, description: experience.description || null, start_date: experience.start || null, end_date: experience.current ? null : experience.end || null, current_job: experience.current, published: experience.status === "published", sort_order }));
+    const settings = store.settings;
+    const requests = [
+      tagRows.length ? supabase.from("tags").upsert(tagRows) : Promise.resolve({ error: null }),
+      toolRows.length ? supabase.from("tools").upsert(toolRows) : Promise.resolve({ error: null }),
+      projectRows.length ? supabase.from("projects").upsert(projectRows) : Promise.resolve({ error: null }),
+      experienceRows.length ? supabase.from("experiences").upsert(experienceRows) : Promise.resolve({ error: null }),
+      supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null }),
+    ];
+    const results = await Promise.all(requests);
+    const failed = results.find(result => result.error);
+    if (failed?.error) console.error("Não foi possível salvar no Supabase:", failed.error.message);
+    for (const project of store.projects) {
+      await supabase.from("project_tags").delete().eq("project_id", project.id);
+      await supabase.from("project_tools").delete().eq("project_id", project.id);
+      if (project.tags.length) await supabase.from("project_tags").insert(project.tags.map(tag_id => ({ project_id: project.id, tag_id })));
+      if (project.tools.length) await supabase.from("project_tools").insert(project.tools.map(tool_id => ({ project_id: project.id, tool_id })));
+    }
+  }
+  async function hydrate() {
+    const [tags, tools, projects, experiences, settings, projectTags, projectTools] = await Promise.all([
+      supabase.from("tags").select("id,name").order("name"), supabase.from("tools").select("id,name").order("name"),
+      supabase.from("projects").select("id,title,client,description,published,created_at").order("sort_order"),
+      supabase.from("experiences").select("id,company,position,description,start_date,end_date,current_job,published").order("sort_order"),
+      supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("project_tags").select("project_id,tag_id"), supabase.from("project_tools").select("project_id,tool_id"),
+    ]);
+    if (tags.error || tools.error || projects.error || experiences.error) return;
+    const site = settings.data ?? {};
+    const remote: Store = {
+      tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, color: "#e0ed65" })),
+      projects: (projects.data ?? []).map(project => ({ id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: [] })),
+      experiences: (experiences.data ?? []).map(experience => ({ id: experience.id, company: experience.company, role: experience.position, description: experience.description ?? "", start: experience.start_date ?? "", end: experience.end_date ?? "", current: Boolean(experience.current_job), status: experience.published ? "published" : "draft" })),
+      settings: { name: site.name ?? "Pedro Marques", role: site.role ?? "", email: site.email ?? "", whatsapp: site.whatsapp ?? "", linkedin: site.linkedin ?? "", behance: site.behance ?? "", about: site.about_pt ?? "", siteTitle: site.seo_title_pt ?? "", seoDescription: site.seo_description_pt ?? "", keywords: site.seo_keywords_pt ?? "" },
+    };
+    localStorage.setItem(key, JSON.stringify(remote));
+    render();
+  }
   const esc = (value = "") => value.replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" })[char] || char);
   const page = document.querySelector<HTMLElement>(".cms-panel");
   const pageName = page?.dataset.page || "projects";
@@ -61,6 +106,7 @@ const { page, mode = "list" } = Astro.props;
   page?.addEventListener("click", event => { const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]"); if (!target) return; const actionName = target.dataset.action || "", id = target.dataset.id || ""; const store = load(); if (actionName === "Adicionar projeto") { projectForm = true; editingId = ""; } else if (actionName === "Adicionar experiência") { experienceForm = true; editingId = ""; } else if (actionName === "cancel-project") projectForm = false; else if (actionName === "cancel-experience") experienceForm = false; else if (actionName === "edit-project") { projectForm = true; editingId = id; } else if (actionName === "edit-experience") { experienceForm = true; editingId = id; } else if (actionName.startsWith("delete-")) { const type = actionName.replace("delete-", ""); if (confirm("Excluir este registro?")) { if (type === "tag") store.tags = store.tags.filter(x => x.id !== id); if (type === "tool") store.tools = store.tools.filter(x => x.id !== id); if (type === "project") store.projects = store.projects.filter(x => x.id !== id); if (type === "experience") store.experiences = store.experiences.filter(x => x.id !== id); save(store); } } render(); });
   page?.addEventListener("submit", async event => { event.preventDefault(); const form = event.target as HTMLFormElement, data = new FormData(form), type = form.dataset.form || "", store = load(); const intent = (event as SubmitEvent).submitter instanceof HTMLButtonElement ? (event as SubmitEvent).submitter?.value : "published"; if (type === "tag") store.tags.push({ id: uid(), name: String(data.get("name")) }); if (type === "tool") store.tools.push({ id: uid(), name: String(data.get("name")), color: String(data.get("color")) }); if (type === "project") { const item: Project = { id: editingId || uid(), title: String(data.get("title")), client: String(data.get("client")), description: String(data.get("description")), status: intent === "draft" ? "draft" : "published", createdAt: editingId ? (store.projects.find(p => p.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(), tags: data.getAll("tags").map(String), tools: data.getAll("tools").map(String), media: [] }; const files = data.getAll("media").filter(x => x instanceof File) as File[]; item.media = await Promise.all(files.filter(f => f.size).map(f => new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(f); }))); const index = store.projects.findIndex(p => p.id === item.id); index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item); projectForm = false; editingId = ""; } if (type === "experience") { const item: Experience = { id: editingId || uid(), company: String(data.get("company")), role: String(data.get("role")), description: String(data.get("description")), start: String(data.get("start")), end: String(data.get("end")), current: data.get("current") === "on", status: intent === "draft" ? "draft" : "published" }; const index = store.experiences.findIndex(e => e.id === item.id); index >= 0 ? store.experiences.splice(index, 1, item) : store.experiences.unshift(item); experienceForm = false; editingId = ""; } if (type === "settings") store.settings = { ...store.settings, ...Object.fromEntries(data.entries()) as Record<string, string> }; save(store); render(); });
   render();
+  void hydrate();
 </script>
 
 <style>
