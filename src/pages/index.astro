@@ -110,6 +110,10 @@ const projectData = (projects ?? []).map((project) => {
   @media(max-width:700px) { #menu.open nav a { height:auto; padding:8px 0; } #menu.open nav a::after { bottom:3px; } }
 </style>
 <style is:global>
+  /* Mantém a seta dos títulos na mesma linha de base das letras, como nos cards. */
+  main > section h2 i, body footer h2 i { width:20px; height:20px; margin-left:6px; vertical-align:baseline; position:relative; bottom:7px; }
+</style>
+<style is:global>
   main .areas .area-card, main .areas .area-card.flipped { height:500px !important; overflow:hidden; background:#232323 !important; transform:none !important; transition:background .4s ease !important; }
   main .areas .area-card span { position:absolute; top:16px; left:15px; z-index:3; display:flex; align-items:flex-end; gap:3px; color:#f5f2ef; line-height:1; transition:color .4s ease; }
   main .areas .area-card span i { display:block; align-self:flex-end; margin:0 0 8px; vertical-align:0; }
