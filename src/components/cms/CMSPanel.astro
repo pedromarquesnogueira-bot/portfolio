@@ -45,6 +45,23 @@ const { page, mode = "list" } = Astro.props;
     localStorage.setItem(key, JSON.stringify(store));
     showFeedback("Alterações salvas.");
   }
+  async function deleteRemote(type: string, id: string) {
+    if (type === "tag") {
+      dbError((await supabase.from("project_tags").delete().eq("tag_id", id)).error);
+      dbError((await supabase.from("tags").delete().eq("id", id)).error);
+    }
+    if (type === "tool") {
+      dbError((await supabase.from("project_tools").delete().eq("tool_id", id)).error);
+      dbError((await supabase.from("tools").delete().eq("id", id)).error);
+    }
+    if (type === "project") {
+      dbError((await supabase.from("project_tags").delete().eq("project_id", id)).error);
+      dbError((await supabase.from("project_tools").delete().eq("project_id", id)).error);
+      dbError((await supabase.from("project_images").delete().eq("project_id", id)).error);
+      dbError((await supabase.from("projects").delete().eq("id", id)).error);
+    }
+    if (type === "experience") dbError((await supabase.from("experiences").delete().eq("id", id)).error);
+  }
   async function sync(store: Store) {
     const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
     const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name), icon_url: tool.iconUrl || null }));
@@ -147,11 +164,17 @@ const { page, mode = "list" } = Astro.props;
     if (actionName === "edit-experience") { experienceForm = true; editingId = id; render(); return; }
     if (!actionName.startsWith("delete-") || !confirm("Excluir este registro?")) return;
     const type = actionName.replace("delete-", "");
-    if (type === "tag") store.tags = store.tags.filter(x => x.id !== id);
-    if (type === "tool") store.tools = store.tools.filter(x => x.id !== id);
-    if (type === "project") store.projects = store.projects.filter(x => x.id !== id);
-    if (type === "experience") store.experiences = store.experiences.filter(x => x.id !== id);
-    try { await save(store); render(); } catch (error) { console.error(error); showFeedback("Não foi possível salvar. Tente novamente."); }
+    try {
+      showFeedback("Excluindo...");
+      await deleteRemote(type, id);
+      if (type === "tag") store.tags = store.tags.filter(x => x.id !== id);
+      if (type === "tool") store.tools = store.tools.filter(x => x.id !== id);
+      if (type === "project") store.projects = store.projects.filter(x => x.id !== id);
+      if (type === "experience") store.experiences = store.experiences.filter(x => x.id !== id);
+      localStorage.setItem(key, JSON.stringify(store));
+      showFeedback("Item excluído.");
+      render();
+    } catch (error) { console.error(error); showFeedback(error instanceof Error ? error.message : "Não foi possível excluir. Tente novamente."); }
   });
   page?.addEventListener("submit", async event => {
     event.preventDefault();
