@@ -6,13 +6,14 @@ const { page, mode = "list" } = Astro.props;
 <section class="cms-panel" data-page={page} data-mode={mode}>
   <noscript>Ative o JavaScript para usar o painel administrativo.</noscript>
 </section>
+<p id="cms-feedback" role="status" aria-live="polite"></p>
 
 <script>
   import { createClient } from "@supabase/supabase-js";
 
   type Tag = { id: string; name: string };
   type Tool = { id: string; name: string; iconUrl: string };
-  type Project = { id: string; title: string; client: string; description: string; status: "draft" | "published"; createdAt: string; tags: string[]; tools: string[]; media: string[] };
+  type Project = { id: string; title: string; client: string; description: string; status: "draft" | "published"; createdAt: string; tags: string[]; tools: string[]; media: string[]; coverImage: string };
   type Experience = { id: string; company: string; role: string; description: string; start: string; end: string; current: boolean; status: "draft" | "published" };
   type Store = { tags: Tag[]; tools: Tool[]; projects: Project[]; experiences: Experience[]; settings: Record<string, string> };
   const key = "pedro-portfolio-cms-v1";
@@ -25,34 +26,55 @@ const { page, mode = "list" } = Astro.props;
   });
   const load = (): Store => { try { return JSON.parse(localStorage.getItem(key) || "") as Store; } catch { const data = defaults(); localStorage.setItem(key, JSON.stringify(data)); return data; } };
   const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const save = (store: Store) => { localStorage.setItem(key, JSON.stringify(store)); void sync(store); };
+  const showFeedback = (message: string) => { const element = document.querySelector<HTMLElement>("#cms-feedback"); if (element) element.textContent = message; };
+  const dbError = (error: { message: string } | null) => {
+    if (error) throw new Error(error.message);
+  };
+  async function uploadFile(file: File) {
+    const upload = new FormData();
+    upload.append("file", file);
+    const response = await fetch("/api/upload/image", { method: "POST", body: upload });
+    if (!response.ok) throw new Error(`Não foi possível enviar “${file.name}”.`);
+    const uploaded = await response.json();
+    if (!uploaded.secure_url) throw new Error(`O envio de “${file.name}” não foi concluído.`);
+    return String(uploaded.secure_url);
+  }
+  async function save(store: Store) {
+    showFeedback("Salvando alterações...");
+    await sync(store);
+    localStorage.setItem(key, JSON.stringify(store));
+    showFeedback("Alterações salvas.");
+  }
   async function sync(store: Store) {
     const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
     const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name), icon_url: tool.iconUrl || null }));
-    const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, slug: slugify(project.title), client: project.client || null, description: project.description || null, published: project.status === "published", featured: false, sort_order }));
+    const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, slug: slugify(project.title), client: project.client || null, description: project.description || null, cover_image: project.coverImage || null, published: project.status === "published", featured: false, sort_order }));
     const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, description: experience.description || null, start_date: experience.start || null, end_date: experience.current ? null : experience.end || null, current_job: experience.current, published: experience.status === "published", sort_order }));
     const settings = store.settings;
-    const requests = [
-      tagRows.length ? supabase.from("tags").upsert(tagRows) : Promise.resolve({ error: null }),
-      toolRows.length ? supabase.from("tools").upsert(toolRows) : Promise.resolve({ error: null }),
-      projectRows.length ? supabase.from("projects").upsert(projectRows) : Promise.resolve({ error: null }),
-      experienceRows.length ? supabase.from("experiences").upsert(experienceRows) : Promise.resolve({ error: null }),
-      supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null }),
-    ];
-    const results = await Promise.all(requests);
-    const failed = results.find(result => result.error);
-    if (failed?.error) console.error("Não foi possível salvar no Supabase:", failed.error.message);
+    // O painel salva uma cópia completa do conteúdo. Remover primeiro os vínculos
+    // evita que itens excluídos reapareçam quando a página consulta o banco novamente.
+    dbError((await supabase.from("project_tags").delete().not("project_id", "is", null)).error);
+    dbError((await supabase.from("project_tools").delete().not("project_id", "is", null)).error);
+    dbError((await supabase.from("project_images").delete().not("project_id", "is", null)).error);
+    dbError((await supabase.from("projects").delete().not("id", "is", null)).error);
+    dbError((await supabase.from("experiences").delete().not("id", "is", null)).error);
+    dbError((await supabase.from("tags").delete().not("id", "is", null)).error);
+    dbError((await supabase.from("tools").delete().not("id", "is", null)).error);
+    if (tagRows.length) dbError((await supabase.from("tags").insert(tagRows)).error);
+    if (toolRows.length) dbError((await supabase.from("tools").insert(toolRows)).error);
+    if (projectRows.length) dbError((await supabase.from("projects").insert(projectRows)).error);
+    if (experienceRows.length) dbError((await supabase.from("experiences").insert(experienceRows)).error);
+    dbError((await supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null })).error);
     for (const project of store.projects) {
-      await supabase.from("project_tags").delete().eq("project_id", project.id);
-      await supabase.from("project_tools").delete().eq("project_id", project.id);
-      if (project.tags.length) await supabase.from("project_tags").insert(project.tags.map(tag_id => ({ project_id: project.id, tag_id })));
-      if (project.tools.length) await supabase.from("project_tools").insert(project.tools.map(tool_id => ({ project_id: project.id, tool_id })));
+      if (project.tags.length) dbError((await supabase.from("project_tags").insert(project.tags.map(tag_id => ({ project_id: project.id, tag_id })))).error);
+      if (project.tools.length) dbError((await supabase.from("project_tools").insert(project.tools.map(tool_id => ({ project_id: project.id, tool_id })))).error);
+      if (project.media.length) dbError((await supabase.from("project_images").insert(project.media.map((image_url, sort_order) => ({ project_id: project.id, image_url, sort_order })))).error);
     }
   }
   async function hydrate() {
-    const [tags, tools, projects, experiences, settings, projectTags, projectTools] = await Promise.all([
+    const [tags, tools, projects, projectMedia, experiences, settings, projectTags, projectTools] = await Promise.all([
       supabase.from("tags").select("id,name").order("name"), supabase.from("tools").select("id,name,icon_url").order("name"),
-      supabase.from("projects").select("id,title,client,description,published,created_at").order("sort_order"),
+      supabase.from("projects").select("id,title,client,description,cover_image,published,created_at").order("sort_order"), supabase.from("project_images").select("project_id,image_url").order("sort_order"),
       supabase.from("experiences").select("id,company,position,description,start_date,end_date,current_job,published").order("sort_order"),
       supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("project_tags").select("project_id,tag_id"), supabase.from("project_tools").select("project_id,tool_id"),
     ]);
@@ -60,7 +82,7 @@ const { page, mode = "list" } = Astro.props;
     const site = settings.data ?? {};
     const remote: Store = {
       tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, iconUrl: tool.icon_url ?? "" })),
-      projects: (projects.data ?? []).map(project => ({ id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: [] })),
+      projects: (projects.data ?? []).map(project => ({ id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: (projectMedia.data ?? []).filter(image => image.project_id === project.id).map(image => image.image_url), coverImage: project.cover_image ?? "" })),
       experiences: (experiences.data ?? []).map(experience => ({ id: experience.id, company: experience.company, role: experience.position, description: experience.description ?? "", start: experience.start_date ?? "", end: experience.end_date ?? "", current: Boolean(experience.current_job), status: experience.published ? "published" : "draft" })),
       settings: { name: site.name ?? "Pedro Marques", role: site.role ?? "", email: site.email ?? "", whatsapp: site.whatsapp ?? "", linkedin: site.linkedin ?? "", behance: site.behance ?? "", about: site.about_pt ?? "", siteTitle: site.seo_title_pt ?? "", seoDescription: site.seo_description_pt ?? "", keywords: site.seo_keywords_pt ?? "" },
     };
@@ -74,6 +96,7 @@ const { page, mode = "list" } = Astro.props;
   let projectForm = initialForm;
   let experienceForm = initialForm;
   let editingId = "";
+  let selectedMedia: File[] = [];
 
   const status = (value: "draft" | "published") => `<span class="status ${value}">${value === "published" ? "Publicado" : "Rascunho"}</span>`;
   const action = (label: string, name: string, id = "", extra = "") => `<button type="button" class="icon-button" data-action="${name}" data-id="${id}" ${extra} aria-label="${label}">${label}</button>`;
@@ -87,7 +110,8 @@ const { page, mode = "list" } = Astro.props;
         <form data-form="project" class="editor"><div class="form-grid two"><label>Título do projeto<input required name="title" value="${esc(item?.title)}"></label><label>Cliente<input name="client" value="${esc(item?.client)}"></label></div>
         <label>Descrição<textarea name="description" rows="6">${esc(item?.description)}</textarea></label>
         <div class="split"><fieldset><legend>Tags</legend>${store.tags.length ? store.tags.map(t => `<label class="check"><input type="checkbox" name="tags" value="${t.id}" ${selectedTags.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre tags antes de associá-las.</p>"}</fieldset><fieldset><legend>Ferramentas</legend>${store.tools.length ? store.tools.map(t => `<label class="check"><input type="checkbox" name="tools" value="${t.id}" ${selectedTools.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre ferramentas antes de associá-las.</p>"}</fieldset></div>
-        <label class="upload">Galeria de mídias<input type="file" name="media" multiple accept="image/*,video/*"><span>Selecione imagens ou vídeos. Os arquivos ficam apenas na demonstração local até configurar o Cloudinary.</span></label>
+        <label class="upload">Thumbnail da galeria<input data-thumbnail-input type="file" name="thumbnail" accept="image/png,image/jpeg,image/webp" ${item?.coverImage ? "" : "required"}><span>Imagem de capa que aparecerá no card do projeto.</span><div class="thumbnail-preview">${item?.coverImage ? `<img src="${item.coverImage}" alt="Thumbnail atual">` : ""}</div></label>
+        <label class="upload">Galeria de mídias<input data-media-input type="file" name="media" multiple accept="image/*,video/*"><span>Selecione imagens ou vídeos para o projeto e arraste as miniaturas para definir a sequência.</span><div class="media-preview">${(item?.media ?? []).map((url, index) => `<img draggable="true" data-media-index="${index}" src="${url}" alt="Mídia ${index + 1}">`).join("")}</div></label>
         <div class="form-actions"><button type="button" class="secondary" data-action="cancel-project">Cancelar</button><button class="secondary" name="intent" value="draft">Salvar rascunho</button><button class="primary" name="intent" value="published">Salvar e publicar</button></div></form>`;
     }
     return `${header("Projetos", "Adicionar projeto")}<div class="table-wrap"><table><thead><tr><th></th><th>Projeto</th><th>Cliente</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${store.projects.length ? store.projects.map(p => `<tr ${drag("projects", p.id)}><td class="grip">⠿</td><td><strong>${esc(p.title)}</strong></td><td>${esc(p.client || "—")}</td><td>${new Date(p.createdAt).toLocaleDateString("pt-BR")}</td><td>${status(p.status)}</td><td>${action("Editar", "edit-project", p.id)} ${action("Excluir", "delete-project", p.id)}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ainda não há projetos. Clique em “Adicionar projeto”.</td></tr>`}</tbody></table></div>`;
@@ -102,13 +126,85 @@ const { page, mode = "list" } = Astro.props;
   function render() { if (!page) return; const store = load(); page.innerHTML = pageName === "tags" ? renderTags(store) : pageName === "tools" ? renderTools(store) : pageName === "experience" ? renderExperience(store) : pageName === "settings" ? renderSettings(store) : renderProjects(store); bind(); }
   function bind() {
     page?.querySelectorAll<HTMLElement>("[draggable]").forEach(row => { row.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", row.dataset.id || "")); row.addEventListener("dragover", event => event.preventDefault()); row.addEventListener("drop", event => { event.preventDefault(); const source = event.dataTransfer?.getData("text/plain"), kind = row.dataset.dragKind; if (!source || !kind || source === row.dataset.id) return; const store = load(), list = kind === "projects" ? store.projects : store.experiences; const a = list.findIndex(x => x.id === source), b = list.findIndex(x => x.id === row.dataset.id); if (a >= 0 && b >= 0) { list.splice(b, 0, list.splice(a, 1)[0]); save(store); render(); } }); });
+    const thumbnail = page?.querySelector<HTMLInputElement>("[data-thumbnail-input]"); const thumbnailPreview = page?.querySelector<HTMLElement>(".thumbnail-preview");
+    thumbnail?.addEventListener("change", () => { const file = thumbnail.files?.[0]; if (file && thumbnailPreview) thumbnailPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Prévia da thumbnail">`; });
+    const mediaInput = page?.querySelector<HTMLInputElement>("[data-media-input]"); const mediaPreview = page?.querySelector<HTMLElement>(".media-preview");
+    const drawMedia = () => { if (mediaPreview) mediaPreview.innerHTML = selectedMedia.map((file, index) => `<img draggable="true" data-file-index="${index}" src="${URL.createObjectURL(file)}" alt="Prévia ${index + 1}">`).join(""); };
+    mediaInput?.addEventListener("change", () => { selectedMedia = Array.from(mediaInput.files ?? []); drawMedia(); });
+    mediaPreview?.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", (event.target as HTMLElement).dataset.fileIndex || ""));
+    mediaPreview?.addEventListener("dragover", event => event.preventDefault()); mediaPreview?.addEventListener("drop", event => { event.preventDefault(); const from = Number(event.dataTransfer?.getData("text/plain")); const target = (event.target as HTMLElement).closest<HTMLElement>("[data-file-index]"); const to = Number(target?.dataset.fileIndex); if (Number.isInteger(from) && Number.isInteger(to) && from !== to) { selectedMedia.splice(to, 0, selectedMedia.splice(from, 1)[0]); const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); if (mediaInput) mediaInput.files = transfer.files; drawMedia(); } });
   }
-  page?.addEventListener("click", event => { const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]"); if (!target) return; const actionName = target.dataset.action || "", id = target.dataset.id || ""; const store = load(); if (actionName === "Adicionar projeto") { projectForm = true; editingId = ""; } else if (actionName === "Adicionar experiência") { experienceForm = true; editingId = ""; } else if (actionName === "cancel-project") projectForm = false; else if (actionName === "cancel-experience") experienceForm = false; else if (actionName === "edit-project") { projectForm = true; editingId = id; } else if (actionName === "edit-experience") { experienceForm = true; editingId = id; } else if (actionName.startsWith("delete-")) { const type = actionName.replace("delete-", ""); if (confirm("Excluir este registro?")) { if (type === "tag") store.tags = store.tags.filter(x => x.id !== id); if (type === "tool") store.tools = store.tools.filter(x => x.id !== id); if (type === "project") store.projects = store.projects.filter(x => x.id !== id); if (type === "experience") store.experiences = store.experiences.filter(x => x.id !== id); save(store); } } render(); });
-  page?.addEventListener("submit", async event => { event.preventDefault(); const form = event.target as HTMLFormElement, data = new FormData(form), type = form.dataset.form || "", store = load(); const intent = (event as SubmitEvent).submitter instanceof HTMLButtonElement ? (event as SubmitEvent).submitter?.value : "published"; if (type === "tag") store.tags.push({ id: uid(), name: String(data.get("name")) }); if (type === "tool") { const file = data.get("icon"); if (!(file instanceof File) || !file.size) return; const upload = new FormData(); upload.append("file", file); const response = await fetch("/api/upload/image", { method: "POST", body: upload }); if (!response.ok) { alert("Não foi possível enviar o ícone."); return; } const uploaded = await response.json(); store.tools.push({ id: uid(), name: String(data.get("name")), iconUrl: uploaded.secure_url }); } if (type === "project") { const item: Project = { id: editingId || uid(), title: String(data.get("title")), client: String(data.get("client")), description: String(data.get("description")), status: intent === "draft" ? "draft" : "published", createdAt: editingId ? (store.projects.find(p => p.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(), tags: data.getAll("tags").map(String), tools: data.getAll("tools").map(String), media: [] }; const files = data.getAll("media").filter(x => x instanceof File) as File[]; item.media = await Promise.all(files.filter(f => f.size).map(f => new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(f); }))); const index = store.projects.findIndex(p => p.id === item.id); index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item); projectForm = false; editingId = ""; } if (type === "experience") { const item: Experience = { id: editingId || uid(), company: String(data.get("company")), role: String(data.get("role")), description: String(data.get("description")), start: String(data.get("start")), end: String(data.get("end")), current: data.get("current") === "on", status: intent === "draft" ? "draft" : "published" }; const index = store.experiences.findIndex(e => e.id === item.id); index >= 0 ? store.experiences.splice(index, 1, item) : store.experiences.unshift(item); experienceForm = false; editingId = ""; } if (type === "settings") store.settings = { ...store.settings, ...Object.fromEntries(data.entries()) as Record<string, string> }; save(store); render(); });
+  page?.addEventListener("click", async event => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
+    if (!target) return;
+    const actionName = target.dataset.action || "", id = target.dataset.id || "";
+    const store = load();
+    if (actionName === "Adicionar projeto") { projectForm = true; editingId = ""; render(); return; }
+    if (actionName === "Adicionar experiência") { experienceForm = true; editingId = ""; render(); return; }
+    if (actionName === "cancel-project") { projectForm = false; render(); return; }
+    if (actionName === "cancel-experience") { experienceForm = false; render(); return; }
+    if (actionName === "edit-project") { projectForm = true; editingId = id; render(); return; }
+    if (actionName === "edit-experience") { experienceForm = true; editingId = id; render(); return; }
+    if (!actionName.startsWith("delete-") || !confirm("Excluir este registro?")) return;
+    const type = actionName.replace("delete-", "");
+    if (type === "tag") store.tags = store.tags.filter(x => x.id !== id);
+    if (type === "tool") store.tools = store.tools.filter(x => x.id !== id);
+    if (type === "project") store.projects = store.projects.filter(x => x.id !== id);
+    if (type === "experience") store.experiences = store.experiences.filter(x => x.id !== id);
+    try { await save(store); render(); } catch (error) { console.error(error); showFeedback("Não foi possível salvar. Tente novamente."); }
+  });
+  page?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement, data = new FormData(form), type = form.dataset.form || "", store = load();
+    const submitter = (event as SubmitEvent).submitter;
+    const intent = submitter instanceof HTMLButtonElement ? submitter.value : "published";
+    try {
+      showFeedback(type === "project" || type === "tool" ? "Enviando arquivos..." : "Preparando alterações...");
+      if (type === "tag") store.tags.push({ id: uid(), name: String(data.get("name")) });
+      if (type === "tool") {
+        const file = data.get("icon");
+        if (!(file instanceof File) || !file.size) return;
+        store.tools.push({ id: uid(), name: String(data.get("name")), iconUrl: await uploadFile(file) });
+      }
+      if (type === "project") {
+        const current = store.projects.find(p => p.id === editingId);
+        const item: Project = { id: editingId || uid(), title: String(data.get("title")), client: String(data.get("client")), description: String(data.get("description")), status: intent === "draft" ? "draft" : "published", createdAt: current?.createdAt || new Date().toISOString(), tags: data.getAll("tags").map(String), tools: data.getAll("tools").map(String), media: current?.media || [], coverImage: current?.coverImage || "" };
+        const thumbnail = data.get("thumbnail");
+        if (thumbnail instanceof File && thumbnail.size) {
+          item.coverImage = await uploadFile(thumbnail);
+        }
+        const files = data.getAll("media").filter(x => x instanceof File && x.size) as File[];
+        if (files.length) item.media = await Promise.all(files.map(uploadFile));
+        const index = store.projects.findIndex(p => p.id === item.id);
+        index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item);
+      }
+      if (type === "experience") {
+        const item: Experience = { id: editingId || uid(), company: String(data.get("company")), role: String(data.get("role")), description: String(data.get("description")), start: String(data.get("start")), end: String(data.get("end")), current: data.get("current") === "on", status: intent === "draft" ? "draft" : "published" };
+        const index = store.experiences.findIndex(e => e.id === item.id);
+        index >= 0 ? store.experiences.splice(index, 1, item) : store.experiences.unshift(item);
+      }
+      if (type === "settings") store.settings = { ...store.settings, ...Object.fromEntries(data.entries()) as Record<string, string> };
+      await save(store);
+      if (type === "project") { projectForm = false; editingId = ""; }
+      if (type === "experience") { experienceForm = false; editingId = ""; }
+      render();
+    } catch (error) {
+      console.error(error);
+      showFeedback(error instanceof Error ? error.message : "Não foi possível salvar. Tente novamente.");
+    }
+  });
   render();
   void hydrate();
 </script>
 
 <style>
   .cms-panel { max-width: 1140px; margin: 0 auto; } :global(.page-header) { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:30px; } :global(h1) { color:#e0ed65; font-size:30px; text-transform:uppercase; margin:0; letter-spacing:-1px; } :global(h2) { margin:0 0 22px; font-size:17px; text-transform:uppercase; } :global(.primary), :global(.secondary), :global(.icon-button) { border:0; cursor:pointer; font-weight:800; } :global(.primary) { background:#e0ed65; color:#121212; border-radius:14px; min-width:220px; padding:12px 22px; } :global(.secondary) { background:#aaa5a5; color:#fff; border-radius:14px; padding:12px 22px; } :global(.two-columns), :global(.split) { display:grid; grid-template-columns:1fr 1fr; gap:22px; } :global(.card), :global(.editor) { border:1px solid #555; border-radius:12px; padding:22px; background:#252525; } :global(form) { display:grid; gap:18px; } :global(label) { display:grid; gap:8px; font-weight:800; font-size:13px; text-transform:uppercase; } :global(input), :global(textarea) { background:#f3efeb; border:0; color:#242424; border-radius:11px; padding:12px 14px; width:100%; text-transform:none; font-weight:500; } :global(textarea) { resize:vertical; } :global(.form-grid) { display:grid; grid-template-columns:1fr 1fr; gap:18px; } :global(.form-grid.two) { grid-template-columns:repeat(2, 1fr); } :global(fieldset) { border:1px solid #555; border-radius:10px; display:grid; gap:9px; } :global(legend) { font-weight:800; text-transform:uppercase; font-size:13px; } :global(.check) { display:flex; align-items:center; gap:9px; text-transform:none; } :global(.check input) { width:auto; } :global(.upload) { border:1px dashed #777; padding:18px; border-radius:10px; } :global(.upload span), :global(.hint) { font-size:13px; color:#c0bbbb; text-transform:none; font-weight:400; } :global(.form-actions) { display:flex; justify-content:flex-end; gap:14px; flex-wrap:wrap; } :global(.table-wrap) { overflow:auto; border:1px solid #555; border-radius:12px; } :global(table) { width:100%; border-collapse:collapse; min-width:720px; } :global(th), :global(td) { text-align:left; padding:17px; border-bottom:1px solid #555; } :global(th) { font-size:14px; font-weight:500; } :global(td) { font-size:15px; } :global(.grip) { color:#a7a0a0; cursor:grab; font-size:22px; } :global(.empty) { text-align:center; color:#c4bebe; padding:36px; } :global(.status) { display:inline-block; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; } :global(.status.published) { background:#e0ed65; color:#171717; } :global(.status.draft) { background:#777; color:#fff; } :global(.icon-button) { background:#484848; color:#fff; border-radius:7px; padding:7px 9px; font-size:12px; margin-right:5px; } :global(.plain-list) { margin:0; padding:0; list-style:none; } :global(.plain-list li) { min-height:58px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #666; font-size:16px; } :global(.plain-list .icon-button) { margin-left:auto; } :global(.tool-icon) { display:inline-grid; place-items:center; width:30px; height:30px; object-fit:contain; border-radius:6px; background:#fff; } :global(.tool-icon.placeholder) { color:#222; } :global(.settings) { grid-template-columns:1fr 1fr; align-items:start; } :global(.settings > .form-actions) { grid-column:1 / -1; } @media(max-width:780px) { :global(.two-columns), :global(.split), :global(.settings), :global(.form-grid), :global(.form-grid.two) { grid-template-columns:1fr; } :global(.page-header) { align-items:flex-start; flex-direction:column; } :global(.primary) { min-width:0; width:100%; } }
+</style>
+<style>
+  :global(.thumbnail-preview:empty), :global(.media-preview:empty) { display: none; }
+  :global(#cms-feedback) { max-width:1140px; min-height:22px; margin:14px auto 0; color:#e0ed65; font-weight:700; }
+  :global(.two-columns) { align-items:start; }
+  :global(.thumbnail-preview img) { display:block; width:180px; aspect-ratio:16 / 9; margin-top:12px; object-fit:cover; border-radius:8px; }
+  :global(.media-preview) { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  :global(.media-preview img) { width:92px; height:92px; object-fit:cover; border:1px solid #777; border-radius:8px; cursor:grab; }
 </style>

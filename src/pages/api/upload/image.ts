@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
   );
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
     {
       method: "POST",
       body: uploadData,
@@ -30,6 +30,6 @@ export const POST: APIRoute = async ({ request }) => {
   );
 
   const result = await response.json();
-
+  if (!response.ok) return Response.json(result, { status: response.status });
   return Response.json(result);
 };

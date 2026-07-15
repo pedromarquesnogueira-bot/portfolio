@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&display=swap");
 @import "./tokens.css";
 
 *,
@@ -7,7 +8,7 @@
 }
 
 html {
-  font-family: "Geist", sans-serif;
+  font-family: Arial, sans-serif;
 }
 
 body {
