@@ -21,7 +21,7 @@ const projectData = (projects ?? []).map((project) => {
   <main>
     <section id="home" class="hero" style={`background-image:url('${settings?.hero_banner_url || "/images/hero.png"}')`}><h1>PORTFOLIO <span>CRIATIVO</span></h1></section>
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
-    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><img src="/images/sobre-mim.png" alt="Retrato de Pedro Marques" /></section>
+    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><img src="/images/bg-aboutme.png" alt="Retrato de Pedro Marques" /></section>
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
     <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><strong>{item.company}</strong><b>{item.position}</b><small>{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><p>{item.description}</p></article>)}</div></section>
   </main>
