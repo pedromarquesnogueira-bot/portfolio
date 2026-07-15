@@ -112,6 +112,14 @@ const projectData = (projects ?? []).map((project) => {
   @media(max-width:700px) { #menu.open nav a { height:auto; padding:8px 0; } #menu.open nav a::after { bottom:3px; } }
 </style>
 <style is:global>
+  @media(min-width:701px) {
+    #menu { padding-inline:60px !important; }
+    main .areas, main .works, main .experience { padding-inline:60px !important; }
+    main .about { padding-inline:60px !important; }
+    body footer { padding-inline:60px !important; }
+  }
+</style>
+<style is:global>
   /* Mantém a seta dos títulos na mesma linha de base das letras, como nos cards. */
   main > section h2 i, body footer h2 i { width:20px; height:20px; margin-left:6px; vertical-align:baseline; position:relative; bottom:12px; }
   main > section h2, body footer h2 { position:relative; border-bottom:2px solid #858585; }
