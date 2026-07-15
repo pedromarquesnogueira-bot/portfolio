@@ -46,16 +46,16 @@ const projectData = (projects ?? []).map((project) => {
   .modal-shell > header h2 { margin:0; padding:0; border:0; color:#b000ff; font-size:35px; text-transform:none; }
   #close-modal { display:grid; place-items:center; width:30px; height:30px; border:0; border-radius:50%; background:#050505; color:#fff; font-size:30px; line-height:1; cursor:pointer; }
   #modal-gallery { background:#fff; }
-  .modal-hero img, .modal-hero video { display:block; width:100%; max-height:650px; object-fit:cover; }
-  .modal-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0; }
-  .modal-grid img, .modal-grid video { display:block; width:100%; aspect-ratio:1 / 1.25; object-fit:cover; }
+  :global(.modal-hero img), :global(.modal-hero video) { display:block; width:100%; max-height:650px; object-fit:cover; }
+  :global(.modal-grid) { display:grid; grid-template-columns:repeat(3,1fr); gap:0; }
+  :global(.modal-grid img), :global(.modal-grid video) { display:block; width:100%; aspect-ratio:1 / 1.25; object-fit:cover; }
   #modal-details { display:grid; grid-template-columns:1.3fr .9fr 1.3fr 1.35fr; gap:28px; padding:30px; background:#f8f8f8; min-height:200px; }
-  #modal-details h3 { margin:0 0 13px; color:#a6a8aa; font:800 16px "Barlow",sans-serif; text-transform:uppercase; }
-  #modal-details p { margin:0; color:#222; font-size:16px; line-height:1.25; }
-  .modal-tags { display:flex; flex-wrap:wrap; gap:10px; }
-  .modal-tags span { box-sizing:border-box; display:inline-flex; align-items:center; height:32px; border:1px solid #a6a8aa; border-radius:8px; padding:0 14px; color:#222; font-size:16px; }
-  .modal-tools { display:grid; gap:8px; }
-  .modal-tools > div { box-sizing:border-box; display:flex; align-items:center; gap:8px; height:40px; padding:5px; border:1px solid #a6a8aa; border-radius:8px; background:#fff; color:#222; font-size:16px; }
-  .modal-tools img { width:28px; height:28px; object-fit:contain; }
-  @media(max-width:700px) { #project-modal { width:94vw; } .modal-shell > header { padding:18px 14px; } .modal-shell > header h2 { font-size:26px; } .modal-grid { grid-template-columns:1fr; } #modal-details { grid-template-columns:1fr; gap:20px; padding:22px 16px; } }
+  #modal-details :global(h3) { margin:0 0 13px; color:#a6a8aa; font:800 16px "Barlow",sans-serif; text-transform:uppercase; }
+  #modal-details :global(p) { margin:0; color:#222; font-size:16px; line-height:1.25; }
+  :global(.modal-tags) { display:flex; flex-wrap:wrap; gap:10px; }
+  :global(.modal-tags span) { box-sizing:border-box; display:inline-flex; align-items:center; height:32px; border:1px solid #a6a8aa; border-radius:8px; padding:0 14px; color:#222; font-size:16px; }
+  :global(.modal-tools) { display:grid; gap:8px; }
+  :global(.modal-tools > div) { box-sizing:border-box; display:flex; align-items:center; gap:8px; height:40px; padding:5px; border:1px solid #a6a8aa; border-radius:8px; background:#fff; color:#222; font-size:16px; }
+  :global(.modal-tools img) { width:28px; height:28px; object-fit:contain; }
+  @media(max-width:700px) { #project-modal { width:94vw; } .modal-shell > header { padding:18px 14px; } .modal-shell > header h2 { font-size:26px; } :global(.modal-grid) { grid-template-columns:1fr; } #modal-details { grid-template-columns:1fr; gap:20px; padding:22px 16px; } }
 </style>
