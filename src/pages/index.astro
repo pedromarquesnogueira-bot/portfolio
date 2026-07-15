@@ -137,9 +137,10 @@ const projectData = (projects ?? []).map((project) => {
   @media(max-width:700px) { main .areas .area-card, main .areas .area-card.flipped { height:500px !important; } }
 </style>
 <style is:global>
-  main .about { display:grid !important; grid-template-columns:1fr 1fr !important; align-items:stretch !important; min-height:440px; padding:0 2.2vw !important; background:#2d2d2d !important; }
-  main .about > div { padding:55px 2.2vw 55px 0; }
-  main .about > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:cover !important; object-position:center top !important; }
+  main .about { display:grid !important; grid-template-columns:1fr 1fr !important; align-items:stretch !important; min-height:440px; padding:0 0 0 2.2vw !important; background:#2d2d2d !important; }
+  main .about > div { padding:55px 60px 55px 0; }
+  main .about > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:contain !important; object-position:right bottom !important; }
   main .about p { width:100%; max-width:none !important; margin:0 0 24px; }
-  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 14px !important; } main .about > div { padding:35px 0 20px; } main .about > img { height:420px; object-position:center top !important; } }
+  @media(min-width:701px) { main .about { padding-left:60px !important; } }
+  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div { padding:35px 14px 20px; } main .about > img { height:auto; object-position:right bottom !important; } }
 </style>
