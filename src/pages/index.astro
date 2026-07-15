@@ -116,7 +116,7 @@ const projectData = (projects ?? []).map((project) => {
 </style>
 <style is:global>
   #gallery { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }
-  #gallery .project { position:relative; display:block; aspect-ratio:1; overflow:hidden; border:0 !important; border-radius:12px !important; background:#232323; color:#fff; }
+  #gallery .project { position:relative; display:block; width:100%; min-width:0; aspect-ratio:1; overflow:hidden; border:0 !important; border-radius:12px !important; background:#232323; color:#fff; }
   #gallery .project img { display:block; width:100%; height:100%; border:0 !important; border-radius:12px !important; outline:0; object-fit:cover; clip-path:inset(0 round 12px); }
   #gallery .project::after { content:""; position:absolute; right:0; bottom:0; left:0; height:55%; background:linear-gradient(to bottom, transparent, rgb(0 0 0 / .3)); opacity:0; pointer-events:none; transition:opacity .35s ease; }
   #gallery .project span { position:absolute !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:1; display:block; padding:12px !important; background:transparent !important; color:#fff; font-weight:800; text-align:left; transform:translateY(120%); transition:transform .35s ease; }
