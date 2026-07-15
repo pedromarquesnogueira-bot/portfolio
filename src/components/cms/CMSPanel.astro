@@ -26,6 +26,7 @@ const { page, mode = "list" } = Astro.props;
   });
   const load = (): Store => { try { return JSON.parse(localStorage.getItem(key) || "") as Store; } catch { const data = defaults(); localStorage.setItem(key, JSON.stringify(data)); return data; } };
   const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const monthToDate = (value: string) => value ? `${value.slice(0, 7)}-01` : null;
   const showFeedback = (message: string) => { const element = document.querySelector<HTMLElement>("#cms-feedback"); if (element) element.textContent = message; };
   const dbError = (error: { message: string } | null) => {
     if (error) throw new Error(error.message);
@@ -66,7 +67,7 @@ const { page, mode = "list" } = Astro.props;
     const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
     const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name), icon_url: tool.iconUrl || null }));
     const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, slug: slugify(project.title), client: project.client || null, description: project.description || null, cover_image: project.coverImage || null, published: project.status === "published", featured: false, sort_order }));
-    const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, description: experience.description || null, start_date: experience.start || null, end_date: experience.current ? null : experience.end || null, current_job: experience.current, published: experience.status === "published", sort_order }));
+    const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, description: experience.description || null, start_date: monthToDate(experience.start), end_date: experience.current ? null : monthToDate(experience.end), current_job: experience.current, published: experience.status === "published", sort_order }));
     const settings = store.settings;
     // O painel salva uma cópia completa do conteúdo. Remover primeiro os vínculos
     // evita que itens excluídos reapareçam quando a página consulta o banco novamente.
@@ -100,7 +101,7 @@ const { page, mode = "list" } = Astro.props;
     const remote: Store = {
       tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, iconUrl: tool.icon_url ?? "" })),
       projects: (projects.data ?? []).map(project => ({ id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: (projectMedia.data ?? []).filter(image => image.project_id === project.id).map(image => image.image_url), coverImage: project.cover_image ?? "" })),
-      experiences: (experiences.data ?? []).map(experience => ({ id: experience.id, company: experience.company, role: experience.position, description: experience.description ?? "", start: experience.start_date ?? "", end: experience.end_date ?? "", current: Boolean(experience.current_job), status: experience.published ? "published" : "draft" })),
+      experiences: (experiences.data ?? []).map(experience => ({ id: experience.id, company: experience.company, role: experience.position, description: experience.description ?? "", start: experience.start_date?.slice(0, 7) ?? "", end: experience.end_date?.slice(0, 7) ?? "", current: Boolean(experience.current_job), status: experience.published ? "published" : "draft" })),
       settings: { name: site.name ?? "Pedro Marques", role: site.role ?? "", email: site.email ?? "", whatsapp: site.whatsapp ?? "", linkedin: site.linkedin ?? "", behance: site.behance ?? "", about: site.about_pt ?? "", siteTitle: site.seo_title_pt ?? "", seoDescription: site.seo_description_pt ?? "", keywords: site.seo_keywords_pt ?? "" },
     };
     localStorage.setItem(key, JSON.stringify(remote));
