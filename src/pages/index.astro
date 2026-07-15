@@ -79,3 +79,23 @@ const projectData = (projects ?? []).map((project) => {
   :global(.modal-tools img) { width:28px; height:28px; object-fit:contain; }
   @media(max-width:700px) { #project-modal { width:94vw; } .modal-shell > header { padding:18px 14px; } .modal-shell > header h2 { font-size:26px; } #modal-details { grid-template-columns:1fr; gap:20px; padding:22px 16px; } }
 </style>
+<style is:global>
+  #menu nav a { font-size:14px !important; }
+  main .hero h1 { font-family:"Barlow Condensed", sans-serif !important; }
+  main > section h2, body footer h2 { font-family:"Barlow Condensed", sans-serif !important; font-size:40px !important; }
+  main .area-card { font-family:"Barlow Condensed", sans-serif !important; }
+  main .area-card span { font-size:72px !important; }
+  main .area-card strong { font-size:40px !important; line-height:.9 !important; }
+  main .area-card em { font-family:"Geist", Arial, sans-serif !important; font-size:16px !important; line-height:1.35 !important; }
+  main .about p { font-size:16px !important; }
+  main .filters button, main .filters input, main .outline { font-size:16px !important; }
+  main .filters label { padding:4px 9px !important; }
+  main .outline { width:auto !important; min-width:170px !important; }
+  main .experience article { min-height:210px !important; }
+  main .experience strong, main .experience b, main .experience small, main .experience p { font-family:"Geist", Arial, sans-serif !important; font-size:16px !important; }
+  main .experience strong { font-weight:800 !important; }
+  main .experience b { font-weight:400 !important; }
+  body footer a { font-size:16px !important; }
+  body footer small { font-size:14px !important; }
+  @media(max-width:700px) { main .area-card, main .area-card.flipped { height:230px !important; } main .area-card strong { bottom:18px !important; } }
+</style>
