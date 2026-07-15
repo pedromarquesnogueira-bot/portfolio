@@ -84,9 +84,12 @@ const { page, mode = "list" } = Astro.props;
     if (experienceRows.length) dbError((await supabase.from("experiences").insert(experienceRows)).error);
     dbError((await supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null })).error);
     for (const project of store.projects) {
-      if (project.tags.length) dbError((await supabase.from("project_tags").insert(project.tags.map(tag_id => ({ project_id: project.id, tag_id })))).error);
-      if (project.tools.length) dbError((await supabase.from("project_tools").insert(project.tools.map(tool_id => ({ project_id: project.id, tool_id })))).error);
-      if (project.media.length) dbError((await supabase.from("project_images").insert(project.media.map((image_url, sort_order) => ({ project_id: project.id, image_url, sort_order })))).error);
+      const projectTags = Array.isArray(project.tags) ? project.tags : [];
+      const projectTools = Array.isArray(project.tools) ? project.tools : [];
+      const projectMedia = Array.isArray(project.media) ? project.media : [];
+      if (projectTags.length) dbError((await supabase.from("project_tags").insert(projectTags.map(tag_id => ({ project_id: project.id, tag_id })))).error);
+      if (projectTools.length) dbError((await supabase.from("project_tools").insert(projectTools.map(tool_id => ({ project_id: project.id, tool_id })))).error);
+      if (projectMedia.length) dbError((await supabase.from("project_images").insert(projectMedia.map((image_url, sort_order) => ({ project_id: project.id, image_url, sort_order })))).error);
     }
   }
   async function hydrate() {
@@ -98,13 +101,27 @@ const { page, mode = "list" } = Astro.props;
     ]);
     if (tags.error || tools.error || projects.error || experiences.error) return;
     const site = settings.data ?? {};
+    const cached = load();
+    const remoteRelations = (projectMedia.data?.length ?? 0) + (projectTags.data?.length ?? 0) + (projectTools.data?.length ?? 0);
+    const cachedRelations = cached.projects.reduce((total, project) => total + (project.media?.length ?? 0) + (project.tags?.length ?? 0) + (project.tools?.length ?? 0), 0);
+    // Se uma leitura antiga terminar enquanto um salvamento ainda está inserindo os vínculos,
+    // conserva a cópia local mais completa em vez de apagar imagens, tags e ferramentas.
+    const recoverCachedRelations = remoteRelations === 0 && cachedRelations > 0;
     const remote: Store = {
       tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, iconUrl: tool.icon_url ?? "" })),
-      projects: (projects.data ?? []).map(project => ({ id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: (projectMedia.data ?? []).filter(image => image.project_id === project.id).map(image => image.image_url), coverImage: project.cover_image ?? "" })),
+      projects: (projects.data ?? []).map(project => {
+        const cachedProject = cached.projects.find(item => item.id === project.id);
+        return { id: project.id, title: project.title, client: project.client ?? "", description: project.description ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: recoverCachedRelations ? (cachedProject?.tags ?? []) : (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: recoverCachedRelations ? (cachedProject?.tools ?? []) : (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: recoverCachedRelations ? (cachedProject?.media ?? []) : (projectMedia.data ?? []).filter(image => image.project_id === project.id).map(image => image.image_url), coverImage: project.cover_image ?? "" };
+      }),
       experiences: (experiences.data ?? []).map(experience => ({ id: experience.id, company: experience.company, role: experience.position, description: experience.description ?? "", start: experience.start_date?.slice(0, 7) ?? "", end: experience.end_date?.slice(0, 7) ?? "", current: Boolean(experience.current_job), status: experience.published ? "published" : "draft" })),
       settings: { name: site.name ?? "Pedro Marques", role: site.role ?? "", email: site.email ?? "", whatsapp: site.whatsapp ?? "", linkedin: site.linkedin ?? "", behance: site.behance ?? "", about: site.about_pt ?? "", siteTitle: site.seo_title_pt ?? "", seoDescription: site.seo_description_pt ?? "", keywords: site.seo_keywords_pt ?? "" },
     };
     localStorage.setItem(key, JSON.stringify(remote));
+    if (recoverCachedRelations) {
+      showFeedback("Restaurando imagens, tags e ferramentas...");
+      await sync(remote);
+      showFeedback("Imagens, tags e ferramentas restauradas.");
+    }
     render();
   }
   const esc = (value = "") => value.replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" })[char] || char);
@@ -219,8 +236,9 @@ const { page, mode = "list" } = Astro.props;
       showFeedback(error instanceof Error ? error.message : "Não foi possível salvar. Tente novamente.");
     }
   });
-  render();
-  void hydrate();
+  // Só desenha o painel após a leitura inicial. Assim uma resposta antiga não
+  // consegue sobrescrever uma edição que acabou de ser salva.
+  void hydrate().finally(render);
 </script>
 
 <style>
