@@ -114,6 +114,7 @@ const { page, mode = "list" } = Astro.props;
   let experienceForm = initialForm;
   let editingId = "";
   let selectedMedia: File[] = [];
+  let removedMedia = new Set<string>();
 
   const status = (value: "draft" | "published") => `<span class="status ${value}">${value === "published" ? "Publicado" : "Rascunho"}</span>`;
   const action = (label: string, name: string, id = "", extra = "") => `<button type="button" class="icon-button" data-action="${name}" data-id="${id}" ${extra} aria-label="${label}">${label}</button>`;
@@ -128,7 +129,7 @@ const { page, mode = "list" } = Astro.props;
         <label>Descrição<textarea name="description" rows="6">${esc(item?.description)}</textarea></label>
         <div class="split"><fieldset><legend>Tags</legend>${store.tags.length ? store.tags.map(t => `<label class="check"><input type="checkbox" name="tags" value="${t.id}" ${selectedTags.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre tags antes de associá-las.</p>"}</fieldset><fieldset><legend>Ferramentas</legend>${store.tools.length ? store.tools.map(t => `<label class="check"><input type="checkbox" name="tools" value="${t.id}" ${selectedTools.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre ferramentas antes de associá-las.</p>"}</fieldset></div>
         <label class="upload">Thumbnail da galeria<input data-thumbnail-input type="file" name="thumbnail" accept="image/png,image/jpeg,image/webp" ${item?.coverImage ? "" : "required"}><span>Imagem de capa que aparecerá no card do projeto.</span><div class="thumbnail-preview">${item?.coverImage ? `<img src="${item.coverImage}" alt="Thumbnail atual">` : ""}</div></label>
-        <label class="upload">Galeria de mídias<input data-media-input type="file" name="media" multiple accept="image/*,video/*"><span>Selecione imagens ou vídeos para o projeto e arraste as miniaturas para definir a sequência.</span><div class="media-preview">${(item?.media ?? []).map((url, index) => `<img draggable="true" data-media-index="${index}" src="${url}" alt="Mídia ${index + 1}">`).join("")}</div></label>
+        <label class="upload">Galeria de mídias<input data-media-input type="file" name="media" multiple accept="image/*,video/*"><span>Selecione imagens ou vídeos para o projeto e arraste as miniaturas para definir a sequência.</span><div class="media-preview">${(item?.media ?? []).filter(url => !removedMedia.has(url)).map((url, index) => `<div class="media-item"><img draggable="true" data-media-index="${index}" src="${url}" alt="Mídia ${index + 1}"><button type="button" class="remove-media" data-remove-existing-media data-url="${esc(url)}" aria-label="Remover mídia">×</button></div>`).join("")}</div></label>
         <div class="form-actions"><button type="button" class="secondary" data-action="cancel-project">Cancelar</button><button class="secondary" name="intent" value="draft">Salvar rascunho</button><button class="primary" name="intent" value="published">Salvar e publicar</button></div></form>`;
     }
     return `${header("Projetos", "Adicionar projeto")}<div class="table-wrap"><table><thead><tr><th></th><th>Projeto</th><th>Cliente</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${store.projects.length ? store.projects.map(p => `<tr ${drag("projects", p.id)}><td class="grip">⠿</td><td><strong>${esc(p.title)}</strong></td><td>${esc(p.client || "—")}</td><td>${new Date(p.createdAt).toLocaleDateString("pt-BR")}</td><td>${status(p.status)}</td><td>${action("Editar", "edit-project", p.id)} ${action("Excluir", "delete-project", p.id)}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ainda não há projetos. Clique em “Adicionar projeto”.</td></tr>`}</tbody></table></div>`;
@@ -146,8 +147,9 @@ const { page, mode = "list" } = Astro.props;
     const thumbnail = page?.querySelector<HTMLInputElement>("[data-thumbnail-input]"); const thumbnailPreview = page?.querySelector<HTMLElement>(".thumbnail-preview");
     thumbnail?.addEventListener("change", () => { const file = thumbnail.files?.[0]; if (file && thumbnailPreview) thumbnailPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Prévia da thumbnail">`; });
     const mediaInput = page?.querySelector<HTMLInputElement>("[data-media-input]"); const mediaPreview = page?.querySelector<HTMLElement>(".media-preview");
-    const drawMedia = () => { if (mediaPreview) mediaPreview.innerHTML = selectedMedia.map((file, index) => `<img draggable="true" data-file-index="${index}" src="${URL.createObjectURL(file)}" alt="Prévia ${index + 1}">`).join(""); };
+    const drawMedia = () => { if (mediaPreview) mediaPreview.innerHTML = selectedMedia.map((file, index) => `<div class="media-item"><img draggable="true" data-file-index="${index}" src="${URL.createObjectURL(file)}" alt="Prévia ${index + 1}"><button type="button" class="remove-media" data-remove-file-index="${index}" aria-label="Remover mídia">×</button></div>`).join(""); };
     mediaInput?.addEventListener("change", () => { selectedMedia = Array.from(mediaInput.files ?? []); drawMedia(); });
+    mediaPreview?.addEventListener("click", event => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>(".remove-media"); if (!button) return; const url = button.dataset.url; const fileIndex = button.dataset.removeFileIndex; if (url) { removedMedia.add(url); button.closest<HTMLElement>(".media-item")?.remove(); } if (fileIndex !== undefined) { selectedMedia.splice(Number(fileIndex), 1); const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); if (mediaInput) mediaInput.files = transfer.files; drawMedia(); } });
     mediaPreview?.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", (event.target as HTMLElement).dataset.fileIndex || ""));
     mediaPreview?.addEventListener("dragover", event => event.preventDefault()); mediaPreview?.addEventListener("drop", event => { event.preventDefault(); const from = Number(event.dataTransfer?.getData("text/plain")); const target = (event.target as HTMLElement).closest<HTMLElement>("[data-file-index]"); const to = Number(target?.dataset.fileIndex); if (Number.isInteger(from) && Number.isInteger(to) && from !== to) { selectedMedia.splice(to, 0, selectedMedia.splice(from, 1)[0]); const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); if (mediaInput) mediaInput.files = transfer.files; drawMedia(); } });
   }
@@ -156,11 +158,11 @@ const { page, mode = "list" } = Astro.props;
     if (!target) return;
     const actionName = target.dataset.action || "", id = target.dataset.id || "";
     const store = load();
-    if (actionName === "Adicionar projeto") { projectForm = true; editingId = ""; render(); return; }
+    if (actionName === "Adicionar projeto") { projectForm = true; editingId = ""; selectedMedia = []; removedMedia = new Set(); render(); return; }
     if (actionName === "Adicionar experiência") { experienceForm = true; editingId = ""; render(); return; }
-    if (actionName === "cancel-project") { projectForm = false; render(); return; }
+    if (actionName === "cancel-project") { projectForm = false; selectedMedia = []; removedMedia = new Set(); render(); return; }
     if (actionName === "cancel-experience") { experienceForm = false; render(); return; }
-    if (actionName === "edit-project") { projectForm = true; editingId = id; render(); return; }
+    if (actionName === "edit-project") { projectForm = true; editingId = id; selectedMedia = []; removedMedia = new Set(); render(); return; }
     if (actionName === "edit-experience") { experienceForm = true; editingId = id; render(); return; }
     if (!actionName.startsWith("delete-") || !confirm("Excluir este registro?")) return;
     const type = actionName.replace("delete-", "");
@@ -191,13 +193,13 @@ const { page, mode = "list" } = Astro.props;
       }
       if (type === "project") {
         const current = store.projects.find(p => p.id === editingId);
-        const item: Project = { id: editingId || uid(), title: String(data.get("title")), client: String(data.get("client")), description: String(data.get("description")), status: intent === "draft" ? "draft" : "published", createdAt: current?.createdAt || new Date().toISOString(), tags: data.getAll("tags").map(String), tools: data.getAll("tools").map(String), media: current?.media || [], coverImage: current?.coverImage || "" };
+        const item: Project = { id: editingId || uid(), title: String(data.get("title")), client: String(data.get("client")), description: String(data.get("description")), status: intent === "draft" ? "draft" : "published", createdAt: current?.createdAt || new Date().toISOString(), tags: data.getAll("tags").map(String), tools: data.getAll("tools").map(String), media: (current?.media || []).filter(url => !removedMedia.has(url)), coverImage: current?.coverImage || "" };
         const thumbnail = data.get("thumbnail");
         if (thumbnail instanceof File && thumbnail.size) {
           item.coverImage = await uploadFile(thumbnail);
         }
         const files = data.getAll("media").filter(x => x instanceof File && x.size) as File[];
-        if (files.length) item.media = await Promise.all(files.map(uploadFile));
+        if (files.length) item.media = [...item.media, ...await Promise.all(files.map(uploadFile))];
         const index = store.projects.findIndex(p => p.id === item.id);
         index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item);
       }
@@ -208,7 +210,7 @@ const { page, mode = "list" } = Astro.props;
       }
       if (type === "settings") store.settings = { ...store.settings, ...Object.fromEntries(data.entries()) as Record<string, string> };
       await save(store);
-      if (type === "project") { projectForm = false; editingId = ""; }
+      if (type === "project") { projectForm = false; editingId = ""; selectedMedia = []; removedMedia = new Set(); }
       if (type === "experience") { experienceForm = false; editingId = ""; }
       render();
     } catch (error) {
@@ -229,5 +231,7 @@ const { page, mode = "list" } = Astro.props;
   :global(.two-columns) { align-items:start; }
   :global(.thumbnail-preview img) { display:block; width:180px; aspect-ratio:16 / 9; margin-top:12px; object-fit:cover; border-radius:8px; }
   :global(.media-preview) { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  :global(.media-item) { position:relative; width:92px; height:92px; }
   :global(.media-preview img) { width:92px; height:92px; object-fit:cover; border:1px solid #777; border-radius:8px; cursor:grab; }
+  :global(.remove-media) { position:absolute; top:-7px; right:-7px; display:grid; place-items:center; width:23px; height:23px; padding:0; border:2px solid #252525; border-radius:50%; background:#ef4557; color:#fff; font-size:18px; line-height:1; cursor:pointer; }
 </style>
