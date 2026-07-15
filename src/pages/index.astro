@@ -102,7 +102,8 @@ const projectData = (projects ?? []).map((project) => {
 <style is:global>
   #menu nav { height:100%; align-items:center; }
   #menu nav a { position:relative; display:flex; align-items:center; height:100%; padding:0; border-bottom:0; }
-  #menu nav a::after { content:""; position:absolute; right:0; bottom:10px; left:0; height:2px; background:#e0ed65; transform:scaleX(0); transform-origin:left center; transition:transform .28s ease-out; }
+  #menu { border-bottom:1px solid #858585; }
+  #menu nav a::after { content:""; position:absolute; right:0; bottom:18px; left:0; height:2px; background:#e0ed65; transform:scaleX(0); transform-origin:left center; transition:transform .28s ease-out; }
   #menu nav a:hover, #menu nav a:focus-visible { color:#e0ed65; }
   #menu nav a:hover::after, #menu nav a:focus-visible::after { transform:scaleX(1); }
   @media(max-width:700px) { #menu.open nav a { height:auto; padding:8px 0; } #menu.open nav a::after { bottom:3px; } }
