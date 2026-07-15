@@ -21,7 +21,7 @@ const projectData = (projects ?? []).map((project) => {
   <main>
     <section id="home" class="hero" style={`background-image:url('${settings?.hero_banner_url || "/images/hero.png"}')`}><h1>PORTFOLIO <span>CRIATIVO</span></h1></section>
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
-    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><img src="/images/bg-aboutme.png" alt="Retrato de Pedro Marques" /></section>
+    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><div class="about-portrait"><img src="/images/bg-aboutme.png" alt="Retrato de Pedro Marques" /></div></section>
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
     <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><strong>{item.company}</strong><b>{item.position}</b><small>{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><p>{item.description}</p></article>)}</div></section>
   </main>
@@ -139,8 +139,9 @@ const projectData = (projects ?? []).map((project) => {
 <style is:global>
   main .about { display:grid !important; grid-template-columns:1fr 1fr !important; align-items:stretch !important; min-height:440px; padding:0 0 0 2.2vw !important; background:#2d2d2d !important; }
   main .about > div { padding:55px 60px 55px 0; }
-  main .about > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:contain !important; object-position:right bottom !important; }
+  main .about-portrait { overflow:hidden; }
+  main .about-portrait > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:contain !important; object-position:right bottom !important; }
   main .about p { width:100%; max-width:none !important; margin:0 0 24px; }
-  @media(min-width:701px) { main .about { padding-left:60px !important; } }
-  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div { padding:35px 14px 20px; } main .about > img { height:auto; object-position:right bottom !important; } }
+  @media(min-width:701px) { main .about { padding-left:60px !important; } main .about-portrait > img { transform:scale(1.3); transform-origin:70% 36%; } }
+  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div { padding:35px 14px 20px; } main .about-portrait > img { height:auto; object-position:right bottom !important; } }
 </style>
