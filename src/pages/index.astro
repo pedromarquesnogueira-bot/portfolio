@@ -138,10 +138,10 @@ const projectData = (projects ?? []).map((project) => {
 </style>
 <style is:global>
   main .about { display:grid !important; grid-template-columns:1fr 1fr !important; align-items:stretch !important; min-height:440px; padding:0 0 0 2.2vw !important; background:#2d2d2d !important; }
-  main .about > div { padding:55px 60px 55px 0; }
-  main .about-portrait { overflow:hidden; }
-  main .about-portrait > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:contain !important; object-position:right bottom !important; }
+  main .about > div:not(.about-portrait) { padding:55px 60px 55px 0; }
+  main .about > .about-portrait { padding:0 !important; overflow:hidden !important; }
+  main .about > .about-portrait > img { display:block; width:100%; height:100%; max-height:none !important; object-fit:contain !important; object-position:right bottom !important; }
   main .about p { width:100%; max-width:none !important; margin:0 0 24px; }
-  @media(min-width:701px) { main .about { padding-left:60px !important; } main .about-portrait > img { transform:scale(1.3); transform-origin:70% 36%; } }
-  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div { padding:35px 14px 20px; } main .about-portrait > img { height:auto; object-position:right bottom !important; } }
+  @media(min-width:701px) { main .about { padding-left:60px !important; } main .about > .about-portrait > img { transform:scale(1.3) !important; transform-origin:70% 36% !important; } }
+  @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div:not(.about-portrait) { padding:35px 14px 20px; } main .about > .about-portrait > img { height:auto; object-position:right bottom !important; } }
 </style>
