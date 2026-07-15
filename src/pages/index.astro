@@ -45,9 +45,8 @@ const projectData = (projects ?? []).map((project) => {
   .modal-shell > header { display:flex; align-items:center; justify-content:space-between; padding:28px 0 34px; background:transparent; color:#b000ff; }
   .modal-shell > header h2 { margin:0; padding:0; border:0; color:#b000ff; font-size:35px; text-transform:none; }
   #close-modal { display:grid; place-items:center; width:30px; height:30px; border:0; border-radius:50%; background:#050505; color:#fff; font-size:30px; line-height:1; cursor:pointer; }
-  #modal-gallery { background:transparent; margin:0; padding:0; border:0; font-size:0; line-height:0; }
-  #modal-gallery :global(img), #modal-gallery :global(video) { display:block; width:100%; height:auto; margin:0; padding:0; border:0; object-fit:contain; vertical-align:top; }
-  #modal-gallery :global(img:not(:last-child)) { clip-path:inset(0 0 16px 0); margin-bottom:-16px; }
+  #modal-gallery { display:flex; flex-direction:column; gap:0; background:transparent; margin:0; padding:0; border:0; font-size:0; line-height:0; }
+  #modal-gallery :global(img), #modal-gallery :global(video) { display:block; flex:0 0 auto; width:100%; height:auto; margin:0 !important; padding:0 !important; border:0; object-fit:contain; vertical-align:top; }
   #modal-details { display:grid; grid-template-columns:1.3fr .9fr 1.3fr 1.35fr; gap:28px; padding:30px; background:#f8f8f8; min-height:200px; }
   #modal-details :global(h3) { margin:0 0 13px; color:#a6a8aa; font:800 16px "Barlow",sans-serif; text-transform:uppercase; }
   #modal-details :global(p) { margin:0; color:#222; font-size:16px; line-height:1.25; }
