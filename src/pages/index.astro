@@ -9,6 +9,8 @@ const [{ data: settings }, { data: projects }, { data: images }, { data: project
 ]);
 const tagNames = new Map((tags ?? []).map((tag) => [tag.id, tag.name]));
 const toolData = new Map((tools ?? []).map((tool) => [tool.id, { name: tool.name, iconUrl: tool.icon_url }]));
+const aboutText = settings?.about_pt || "Formado em Publicidade e Propaganda, atuo há mais de 20 anos em diversas frentes da comunicação, do impresso ao digital.";
+const aboutParagraphs = aboutText.split(/\r?\n\s*\r?\n/).filter(Boolean);
 const projectData = (projects ?? []).map((project) => {
   const media = (images ?? []).filter((image) => image.project_id === project.id).map((image) => image.image_url);
   return { ...project, image: project.cover_image ?? media[0], media, tags: (projectTags ?? []).filter((item) => item.project_id === project.id).map((item) => tagNames.get(item.tag_id)).filter(Boolean), tools: (projectTools ?? []).filter((item) => item.project_id === project.id).map((item) => toolData.get(item.tool_id)).filter(Boolean) };
@@ -19,7 +21,7 @@ const projectData = (projects ?? []).map((project) => {
   <main>
     <section id="home" class="hero" style={`background-image:url('${settings?.hero_banner_url || "/images/hero.png"}')`}><h1>PORTFOLIO <span>CRIATIVO</span></h1></section>
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
-    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2><p>{settings?.about_pt || "Formado em Publicidade e Propaganda, atuo há mais de 20 anos em diversas frentes da comunicação, do impresso ao digital."}</p></div><img src="/images/sobre-mim.png" alt="Retrato de Pedro Marques" /></section>
+    <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div></section>
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
     <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><strong>{item.company}</strong><b>{item.position}</b><small>{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><p>{item.description}</p></article>)}</div></section>
   </main>
@@ -125,4 +127,10 @@ const projectData = (projects ?? []).map((project) => {
   main .areas .area-card:hover em, main .areas .area-card.flipped em { transform:translateY(0); }
   main .areas .area-card:hover span, main .areas .area-card.flipped span { color:#222222; }
   @media(max-width:700px) { main .areas .area-card, main .areas .area-card.flipped { height:500px !important; } }
+</style>
+<style is:global>
+  main .about { display:block; min-height:530px; background:#2d2d2d url('/images/sobre-mim.png') center center / cover no-repeat; }
+  main .about > div { width:min(50%, 760px); }
+  main .about p { margin:0 0 24px; }
+  @media(max-width:700px) { main .about { min-height:720px; background-position:58% center; } main .about > div { width:100%; } }
 </style>
