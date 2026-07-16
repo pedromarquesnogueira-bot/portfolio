@@ -157,10 +157,10 @@ const projectData = (projects ?? []).map((project) => {
   /* Mantém a seta dos títulos na mesma linha de base das letras, como nos cards. */
   main > section h2 i, body footer h2 i { width:20px; height:20px; margin-left:6px; vertical-align:baseline; position:relative; bottom:12px; }
   main > section h2 i { filter:brightness(0) invert(1); bottom:13px; }
-  main > section h2 { position:relative; border-bottom:2px solid #a6a8aa; }
+  main > section h2 { position:relative; border-bottom:2px solid #a6a8aa !important; }
   main > section h2::after { content:""; position:absolute; right:0; bottom:-2px; width:10%; height:2px; background:#d9ff65; }
-  body footer h2 { position:relative; border-bottom:2px solid #d8b6ff; }
-  body footer h2::after { display:none; }
+  body footer h2 { position:relative; border-bottom:2px solid #d8b6ff !important; }
+  body footer h2::after { display:none !important; }
 </style>
 <style is:global>
   main .areas .area-card, main .areas .area-card.flipped { height:500px !important; overflow:hidden; background:#232323 !important; transform:none !important; transition:background .4s ease !important; }
