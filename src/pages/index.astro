@@ -167,10 +167,11 @@ const projectData = (projects ?? []).map((project) => {
 </style>
 <style is:global>
   main .experience article { display:grid !important; grid-template-columns:minmax(0, .85fr) minmax(0, 1.15fr); align-items:start; column-gap:42px; padding:34px 38px !important; }
+  main .experience { padding-bottom:100px !important; }
   main .experience .experience-period { display:block; color:#f5f2ef; font-weight:800 !important; text-align:right; line-height:1.25; }
   main .experience .experience-content { min-width:0; text-align:left; }
   main .experience .experience-content strong, main .experience .experience-content b, main .experience .experience-content p { text-align:left; }
   main .experience .experience-content b { margin-top:7px; }
   main .experience .experience-content p { margin:24px 0 0; }
-  @media(max-width:700px) { main .experience article { grid-template-columns:1fr; row-gap:12px; padding:24px !important; } main .experience .experience-period { text-align:left; } }
+  @media(max-width:700px) { main .experience { padding-bottom:60px !important; } main .experience article { grid-template-columns:1fr; row-gap:12px; padding:24px !important; } main .experience .experience-period { text-align:left; } }
 </style>
