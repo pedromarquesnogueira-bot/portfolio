@@ -11,6 +11,13 @@ const tagNames = new Map((tags ?? []).map((tag) => [tag.id, tag.name]));
 const toolData = new Map((tools ?? []).map((tool) => [tool.id, { name: tool.name, iconUrl: tool.icon_url }]));
 const aboutText = settings?.about_pt || "Formado em Publicidade e Propaganda, atuo há mais de 20 anos em diversas frentes da comunicação, do impresso ao digital.";
 const aboutParagraphs = aboutText.split(/\r?\n\s*\r?\n/).filter(Boolean);
+const monthNames = ["Jan", "Fev", "Mar", "Abril", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const formatExperienceMonth = (value: string | null | undefined) => {
+  if (!value) return "";
+  const match = value.match(/^(\d{4})-(\d{2})/);
+  if (!match) return value;
+  return `${monthNames[Number(match[2]) - 1]}.${match[1]}`;
+};
 const projectData = (projects ?? []).map((project) => {
   const media = (images ?? []).filter((image) => image.project_id === project.id).map((image) => image.image_url);
   return { ...project, image: project.cover_image ?? media[0], media, tags: (projectTags ?? []).filter((item) => item.project_id === project.id).map((item) => tagNames.get(item.tag_id)).filter(Boolean), tools: (projectTools ?? []).filter((item) => item.project_id === project.id).map((item) => toolData.get(item.tool_id)).filter(Boolean) };
@@ -23,7 +30,7 @@ const projectData = (projects ?? []).map((project) => {
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
     <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><div class="about-portrait"><img src="/images/bg-aboutme.png" alt="Retrato de Pedro Marques" /></div></section>
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
-    <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><small class="experience-period">{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><div class="experience-content"><strong>{item.company}</strong><b>{item.position}</b><p>{item.description}</p></div></article>)}</div></section>
+    <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><small class="experience-period">{item.current_job ? `${formatExperienceMonth(item.start_date)} - Atual` : `${formatExperienceMonth(item.start_date)} - ${formatExperienceMonth(item.end_date)}`}</small><div class="experience-content"><strong>{item.company}</strong><b>{item.position}</b><p>{item.description}</p></div></article>)}</div></section>
   </main>
   <footer id="contato"><h2>CONTATO <i>↙</i></h2><div>{settings?.whatsapp && <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, "")}`} target="_blank">◉ {settings.whatsapp}</a>}{settings?.email && <a href={`mailto:${settings.email}`}>✉ {settings.email}</a>}{settings?.linkedin && <a href={settings.linkedin} target="_blank">in LinkedIn</a>}{settings?.behance && <a href={settings.behance} target="_blank">Be Behance</a>}</div><small>Pedro Marques · Diretor de Arte · © 2026</small></footer>
   <dialog id="project-modal"><div class="modal-shell"><header><h2 id="modal-title"></h2><button id="close-modal" aria-label="Fechar">×</button></header><div id="modal-gallery"></div><section id="modal-details"></section></div></dialog>
