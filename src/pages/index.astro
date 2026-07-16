@@ -23,7 +23,7 @@ const projectData = (projects ?? []).map((project) => {
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
     <section class="about"><div><h2>SOBRE MIM <i>↙</i></h2>{aboutParagraphs.map((paragraph) => <p>{paragraph}</p>)}</div><div class="about-portrait"><img src="/images/bg-aboutme.png" alt="Retrato de Pedro Marques" /></div></section>
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
-    <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><strong>{item.company}</strong><b>{item.position}</b><small>{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><p>{item.description}</p></article>)}</div></section>
+    <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><small class="experience-period">{item.current_job ? `${item.start_date} · Atual` : `${item.start_date} · ${item.end_date}`}</small><div class="experience-content"><strong>{item.company}</strong><b>{item.position}</b><p>{item.description}</p></div></article>)}</div></section>
   </main>
   <footer id="contato"><h2>CONTATO <i>↙</i></h2><div>{settings?.whatsapp && <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, "")}`} target="_blank">◉ {settings.whatsapp}</a>}{settings?.email && <a href={`mailto:${settings.email}`}>✉ {settings.email}</a>}{settings?.linkedin && <a href={settings.linkedin} target="_blank">in LinkedIn</a>}{settings?.behance && <a href={settings.behance} target="_blank">Be Behance</a>}</div><small>Pedro Marques · Diretor de Arte · © 2026</small></footer>
   <dialog id="project-modal"><div class="modal-shell"><header><h2 id="modal-title"></h2><button id="close-modal" aria-label="Fechar">×</button></header><div id="modal-gallery"></div><section id="modal-details"></section></div></dialog>
@@ -157,4 +157,13 @@ const projectData = (projects ?? []).map((project) => {
   main .about p { width:100%; max-width:none !important; margin:0 0 24px; }
   @media(min-width:701px) { main .about { padding-left:60px !important; } main .about > .about-portrait > img { transform:translate(-12%, -10%) scale(1.72) !important; transform-origin:74% 38% !important; } }
   @media(max-width:700px) { main .about { grid-template-columns:1fr !important; padding:0 !important; } main .about > div:not(.about-portrait) { padding:35px 14px 20px; } main .about > .about-portrait > img { height:auto; object-position:right bottom !important; } }
+</style>
+<style is:global>
+  main .experience article { display:grid !important; grid-template-columns:minmax(0, .85fr) minmax(0, 1.15fr); align-items:start; column-gap:42px; padding:34px 38px !important; }
+  main .experience .experience-period { display:block; color:#f5f2ef; font-weight:800 !important; text-align:right; line-height:1.25; }
+  main .experience .experience-content { min-width:0; text-align:left; }
+  main .experience .experience-content strong, main .experience .experience-content b, main .experience .experience-content p { text-align:left; }
+  main .experience .experience-content b { margin-top:7px; }
+  main .experience .experience-content p { margin:24px 0 0; }
+  @media(max-width:700px) { main .experience article { grid-template-columns:1fr; row-gap:12px; padding:24px !important; } main .experience .experience-period { text-align:left; } }
 </style>
