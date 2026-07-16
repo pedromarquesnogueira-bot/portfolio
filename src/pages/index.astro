@@ -71,11 +71,12 @@ const projectData = (projects ?? []).map((project) => {
   @media(max-width:700px) { .area-card, .area-card.flipped { height:230px; } .area-card strong { bottom:18px; } }
 </style>
 <style is:global>
+  body footer > div { padding-top:36px; }
   body footer div a { display:inline-flex; align-items:center; gap:12px; }
   body footer div a img { display:block; width:24px; height:24px; object-fit:contain; }
   body footer h2 { margin:0 0 36px !important; }
   body footer small { margin-top:72px !important; }
-  @media(max-width:700px) { body footer div a img { width:20px; height:20px; } body footer h2 { margin-bottom:28px !important; } body footer small { margin-top:56px !important; } }
+  @media(max-width:700px) { body footer > div { padding-top:28px; } body footer div a img { width:20px; height:20px; } body footer h2 { margin-bottom:28px !important; } body footer small { margin-top:56px !important; } }
 </style>
 <style>
   #project-modal { width:80vw; max-width:1560px; max-height:92vh; margin:auto; padding:0; border:0; border-radius:0 0 8px 8px; background:transparent; color:#292929; overflow:auto; }
