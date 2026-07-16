@@ -3,9 +3,10 @@ import "../styles/global.css";
 
 interface Props {
   title?: string;
+  analyticsId?: string;
 }
 
-const { title = "Pedro Marques" } = Astro.props;
+const { title = "Pedro Marques", analyticsId } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -18,5 +19,51 @@ const { title = "Pedro Marques" } = Astro.props;
 
   <body>
     <slot />
+    {analyticsId && <aside id="analytics-consent" hidden role="dialog" aria-label="Preferências de cookies">
+      <p>Usamos cookies analíticos para entender como o portfólio é utilizado.</p>
+      <div>
+        <button type="button" data-analytics-consent="denied">Recusar</button>
+        <button type="button" data-analytics-consent="granted">Aceitar</button>
+      </div>
+    </aside>}
   </body>
 </html>
+
+{analyticsId && <script define:vars={{ analyticsId }}>
+  const consentKey = "pedro-marques-analytics-consent";
+  const consentBanner = document.querySelector("#analytics-consent");
+
+  const startAnalytics = () => {
+    if (document.querySelector("script[data-google-analytics]")) return;
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${analyticsId}`;
+    script.dataset.googleAnalytics = "true";
+    document.head.append(script);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", analyticsId, { anonymize_ip: true });
+  };
+
+  const savedConsent = localStorage.getItem(consentKey);
+  if (savedConsent === "granted") startAnalytics();
+  if (!savedConsent && consentBanner) consentBanner.hidden = false;
+
+  document.querySelectorAll("[data-analytics-consent]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const consent = button.dataset.analyticsConsent;
+      localStorage.setItem(consentKey, consent || "denied");
+      if (consent === "granted") startAnalytics();
+      if (consentBanner) consentBanner.hidden = true;
+    });
+  });
+</script>}
+
+<style>
+  #analytics-consent { position: fixed; z-index: 20; right: 18px; bottom: 18px; width: min(390px, calc(100% - 36px)); padding: 18px; border: 1px solid #676767; border-radius: 12px; background: #242424; color: #f8f6f3; box-shadow: 0 12px 34px rgb(0 0 0 / .28); font: 14px/1.4 Arial, sans-serif; }
+  #analytics-consent p { margin: 0 0 14px; }
+  #analytics-consent div { display: flex; justify-content: flex-end; gap: 8px; }
+  #analytics-consent button { border: 1px solid #a6a8aa; border-radius: 8px; background: transparent; color: inherit; padding: 8px 13px; font: inherit; cursor: pointer; }
+  #analytics-consent button:last-child { border-color: #d9ff65; background: #d9ff65; color: #222; font-weight: 700; }
+</style>

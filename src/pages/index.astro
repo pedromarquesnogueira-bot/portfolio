@@ -23,7 +23,7 @@ const projectData = (projects ?? []).map((project) => {
   return { ...project, image: project.cover_image ?? media[0], media, tags: (projectTags ?? []).filter((item) => item.project_id === project.id).map((item) => tagNames.get(item.tag_id)).filter(Boolean), tools: (projectTools ?? []).filter((item) => item.project_id === project.id).map((item) => toolData.get(item.tool_id)).filter(Boolean) };
 });
 ---
-<BaseLayout title={settings?.seo_title_pt || "Pedro Marques · Portfólio"}>
+<BaseLayout title={settings?.seo_title_pt || "Pedro Marques · Portfólio"} analyticsId="G-QSEVKF5DBS">
   <header id="menu"><a class="brand" href="#home">PEDRO<span>.MARQUES</span></a><nav><a href="#home">Home</a><a href="#trabalhos">Trabalhos</a><a href="#experiencia">Experiência</a><a href="#contato">Contato</a></nav><button id="menu-toggle" aria-label="Abrir menu"><span></span><span></span><span></span></button></header>
   <main>
     <section id="home" class="hero" style={`background-image:url('${settings?.hero_banner_url || "/images/hero.png"}')`}><h1>PORTFOLIO <span>CRIATIVO</span></h1></section>

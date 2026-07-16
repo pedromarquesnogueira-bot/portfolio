@@ -3,6 +3,7 @@ import BaseLayout from "./BaseLayout.astro";
 
 const { pathname } = Astro.url;
 const links = [
+  ["Analytics", "/cms/analytics"],
   ["Projetos", "/cms/projetos"],
   ["Experiência", "/cms/experiencia"],
   ["Tags", "/cms/tags"],
@@ -14,7 +15,7 @@ const links = [
 <BaseLayout title="CMS · Pedro Marques">
   <div class="shell">
     <aside class="sidebar">
-      <a class="brand" href="/cms/projetos" aria-label="Início do CMS">PEDRO<span>.MARQUES</span></a>
+      <a class="brand" href="/cms/analytics" aria-label="Início do CMS">PEDRO<span>.MARQUES</span></a>
       <nav aria-label="Navegação do CMS">
         {links.map(([label, href]) => <a class:list={{ active: pathname === href || (href === "/cms/projetos" && pathname.startsWith("/cms/projetos")) }} href={href}>{label}</a>)}
       </nav>
