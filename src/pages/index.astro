@@ -172,7 +172,14 @@ const projectData = (projects ?? []).map((project) => {
   main .areas .area-card:hover strong, main .areas .area-card.flipped strong { transform:translateY(-150px); opacity:0; }
   main .areas .area-card:hover em, main .areas .area-card.flipped em { transform:translateY(0); }
   main .areas .area-card:hover span, main .areas .area-card.flipped span { color:#222222; }
-  @media(max-width:700px) { main .areas { padding-top:40px !important; padding-bottom:40px !important; } main .areas .area-card, main .areas .area-card.flipped { height:500px !important; } }
+  @media(max-width:700px) { main .areas { padding-top:40px !important; padding-bottom:40px !important; } main .areas .area-card, main .areas .area-card.flipped { height:350px !important; } main .areas .area-card em { padding-top:76px; } }
+</style>
+<style is:global>
+  @media(max-width:700px) {
+    #menu-toggle { display:grid !important; place-items:center; width:34px; height:34px; padding:0; border:0; background:transparent; color:#f5f2ef; font-size:24px; line-height:1; cursor:pointer; }
+    #menu nav { display:none; }
+    #menu.open nav { display:grid !important; grid-template-columns:1fr; gap:4px; position:absolute; top:48px; right:0; left:0; height:auto; padding:12px 18px; background:#252525f2; border-bottom:1px solid #858585; }
+  }
 </style>
 <style is:global>
   main .about { display:grid !important; grid-template-columns:1fr 1fr !important; align-items:stretch !important; min-height:440px; padding:0 0 0 2.2vw !important; background:#2d2d2d !important; }
