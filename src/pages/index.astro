@@ -32,7 +32,7 @@ const projectData = (projects ?? []).map((project) => {
     <section id="trabalhos" class="works"><h2>TRABALHOS <i>↙</i></h2><div class="filters">{fixedFilters.map((filter, index) => <button class:list={{ active: index === 0 }} data-filter={filter}>{filter}</button>)}<label><input id="search" placeholder="O que quer ver?" /><span>⌕</span></label></div><div id="gallery" class="gallery"></div><button id="load-more" class="outline">Carregar mais</button></section>
     <section id="experiencia" class="experience"><h2>EXPERIÊNCIA <i>↙</i></h2><div class="experience-list">{(experiences ?? []).map((item) => <article><small class="experience-period">{item.current_job ? `${formatExperienceMonth(item.start_date)} - Atual` : `${formatExperienceMonth(item.start_date)} - ${formatExperienceMonth(item.end_date)}`}</small><div class="experience-content"><strong>{item.company}</strong><b>{item.position}</b><p>{item.description}</p></div></article>)}</div></section>
   </main>
-  <footer id="contato"><h2>CONTATO <i>↙</i></h2><div>{settings?.whatsapp && <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, "")}`} target="_blank">◉ {settings.whatsapp}</a>}{settings?.email && <a href={`mailto:${settings.email}`}>✉ {settings.email}</a>}{settings?.linkedin && <a href={settings.linkedin} target="_blank">in LinkedIn</a>}{settings?.behance && <a href={settings.behance} target="_blank">Be Behance</a>}</div><small>Pedro Marques · Diretor de Arte · © 2026</small></footer>
+  <footer id="contato"><h2>CONTATO <i>↙</i></h2><div>{settings?.whatsapp && <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, "")}`} target="_blank"><img src="/images/contact/whatsapp.png" alt="">{settings.whatsapp}</a>}{settings?.email && <a href={`mailto:${settings.email}`}><img src="/images/contact/email.png" alt="">{settings.email}</a>}{settings?.linkedin && <a href={settings.linkedin} target="_blank"><img src="/images/contact/linkedin.png" alt="">LinkedIn</a>}{settings?.behance && <a href={settings.behance} target="_blank"><img src="/images/contact/behance.png" alt="">Behance</a>}</div><small>Pedro Marques · Diretor de Arte · © 2026</small></footer>
   <dialog id="project-modal"><div class="modal-shell"><header><h2 id="modal-title"></h2><button id="close-modal" aria-label="Fechar">×</button></header><div id="modal-gallery"></div><section id="modal-details"></section></div></dialog>
 </BaseLayout>
 <script define:vars={{ projectData }}>
@@ -69,6 +69,11 @@ const projectData = (projects ?? []).map((project) => {
   footer a { font-size:16px; }
   footer small { font-size:14px; }
   @media(max-width:700px) { .area-card, .area-card.flipped { height:230px; } .area-card strong { bottom:18px; } }
+</style>
+<style is:global>
+  body footer div a { display:inline-flex; align-items:center; gap:12px; }
+  body footer div a img { display:block; width:44px; height:44px; object-fit:contain; }
+  @media(max-width:700px) { body footer div a img { width:32px; height:32px; } }
 </style>
 <style>
   #project-modal { width:80vw; max-width:1560px; max-height:92vh; margin:auto; padding:0; border:0; border-radius:0 0 8px 8px; background:transparent; color:#292929; overflow:auto; }
