@@ -214,5 +214,8 @@ const projectData = (projects ?? []).map((project) => {
   /* Tablet: mantém o retrato preenchendo a coluna direita, sem herdar o recorte do desktop. */
   @media(min-width:701px) and (max-width:1200px) {
     main .about.about > .about-portrait > img { object-fit:cover !important; object-position:70% center !important; transform:none !important; }
+    main .experience .experience-list { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; }
+    main .experience article { grid-template-columns:1fr !important; row-gap:12px; padding:24px !important; }
+    main .experience .experience-period { text-align:left !important; }
   }
 </style>
