@@ -209,3 +209,9 @@ const projectData = (projects ?? []).map((project) => {
   main .experience .experience-content p { margin:24px 0 0; }
   @media(max-width:700px) { main .experience { padding-bottom:60px !important; } main .experience article { grid-template-columns:1fr; row-gap:12px; padding:24px !important; } main .experience .experience-period { text-align:left; } }
 </style>
+<style is:global>
+  /* Tablet: mantém o retrato preenchendo a coluna direita, sem herdar o recorte do desktop. */
+  @media(min-width:701px) and (max-width:1200px) {
+    main .about.about > .about-portrait > img { object-fit:cover !important; object-position:right center !important; transform:none !important; }
+  }
+</style>
