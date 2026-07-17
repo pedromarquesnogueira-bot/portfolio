@@ -5,7 +5,7 @@ import { supabase } from "@lib/supabase";
 const fixedFilters = ["Todos", "Design Digital", "Direção de Arte", "Design Editorial", "Comunicação Corporativa"];
 const areas = [["01", "Design Digital", "Sites|Landing pages|Mídias sociais|E-mail marketing"], ["02", "Direção de Arte", "Conceitos visuais|Campanhas|Anúncios|Key visuals"], ["03", "Design Editorial", "Catálogos|Revistas|E-books|Relatórios|Apresentações"], ["04", "Comunicação Corporativa", "Comunicação interna|Materiais institucionais|Eventos|Endomarketing"]];
 const [{ data: settings }, { data: projects }, { data: images }, { data: projectTags }, { data: tags }, { data: projectTools }, { data: tools }, { data: experiences }] = await Promise.all([
-  supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("projects").select("*").eq("published", true).order("sort_order"), supabase.from("project_images").select("*").order("sort_order"), supabase.from("project_tags").select("*"), supabase.from("tags").select("*"), supabase.from("project_tools").select("*"), supabase.from("tools").select("id,name,icon_url"), supabase.from("experiences").select("*").eq("published", true).order("sort_order"),
+  supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("projects").select("*").eq("published", true).order("sort_order").order("created_at"), supabase.from("project_images").select("*").order("sort_order"), supabase.from("project_tags").select("*"), supabase.from("tags").select("*"), supabase.from("project_tools").select("*"), supabase.from("tools").select("id,name,icon_url"), supabase.from("experiences").select("*").eq("published", true).order("sort_order"),
 ]);
 const tagNames = new Map((tags ?? []).map((tag) => [tag.id, tag.name]));
 const toolData = new Map((tools ?? []).map((tool) => [tool.id, { name: tool.name, iconUrl: tool.icon_url }]));
@@ -230,4 +230,9 @@ const projectData = (projects ?? []).map((project) => {
     main .experience article { grid-template-columns:1fr !important; row-gap:12px; padding:24px !important; }
     main .experience .experience-period { text-align:left !important; }
   }
+</style>
+
+<style is:global>
+  main .filters label { padding:4px 25px 4px 9px !important; }
+  main .filters label span { color:#2a2a2a !important; font-size:20px; font-weight:800; line-height:1; opacity:1; }
 </style>

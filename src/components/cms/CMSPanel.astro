@@ -83,7 +83,9 @@ const { page, mode = "list" } = Astro.props;
       const project = store.projects.find(item => item.id === id);
       const row = projectRows.find(item => item.id === id);
       if (!project || !row) return;
-      dbError((await supabase.from("projects").upsert(row)).error);
+      // Salvar um projeto também atualiza toda a sequência: ao criar um item no topo,
+      // os demais precisam receber suas novas posições para a galeria pública não empatar.
+      dbError((await supabase.from("projects").upsert(projectRows)).error);
       dbError((await supabase.from("project_tags").delete().eq("project_id", id)).error);
       dbError((await supabase.from("project_tools").delete().eq("project_id", id)).error);
       dbError((await supabase.from("project_images").delete().eq("project_id", id)).error);
@@ -98,11 +100,18 @@ const { page, mode = "list" } = Astro.props;
   async function hydrate() {
     const [tags, tools, projects, projectMedia, experiences, settings, projectTags, projectTools] = await Promise.all([
       supabase.from("tags").select("id,name,name_en").order("name"), supabase.from("tools").select("id,name,icon_url").order("name"),
-      supabase.from("projects").select("id,title,title_en,client,description,description_en,cover_image,published,created_at").order("sort_order"), supabase.from("project_images").select("project_id,image_url").order("sort_order"),
+      supabase.from("projects").select("id,title,title_en,client,description,description_en,cover_image,published,created_at,sort_order").order("sort_order").order("created_at"), supabase.from("project_images").select("project_id,image_url").order("sort_order"),
       supabase.from("experiences").select("id,company,position,position_en,description,description_en,start_date,end_date,current_job,published").order("sort_order"),
       supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("project_tags").select("project_id,tag_id"), supabase.from("project_tools").select("project_id,tool_id"),
     ]);
     if (tags.error || tools.error || projects.error || experiences.error) return;
+    // Corrige registros antigos com posições repetidas ou ausentes, preservando a ordem
+    // já exibida no CMS. Sem números únicos, o banco pode devolver ordens diferentes.
+    const orderedProjects = projects.data ?? [];
+    if (orderedProjects.some((project, index) => project.sort_order !== index)) {
+      const orderError = (await supabase.from("projects").upsert(orderedProjects.map((project, sort_order) => ({ id: project.id, sort_order })))).error;
+      if (orderError) console.warn("Não foi possível regularizar a ordem dos projetos.", orderError.message);
+    }
     const site = settings.data ?? {};
     const cached = load();
     const remoteRelations = (projectMedia.data?.length ?? 0) + (projectTags.data?.length ?? 0) + (projectTools.data?.length ?? 0);
@@ -153,7 +162,6 @@ const { page, mode = "list" } = Astro.props;
         <div class="split"><fieldset><legend>Tags</legend>${store.tags.length ? store.tags.map(t => `<label class="check"><input type="checkbox" name="tags" value="${t.id}" ${selectedTags.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre tags antes de associá-las.</p>"}</fieldset><fieldset><legend>Ferramentas</legend>${store.tools.length ? store.tools.map(t => `<label class="check"><input type="checkbox" name="tools" value="${t.id}" ${selectedTools.has(t.id) ? "checked" : ""}>${esc(t.name)}</label>`).join("") : "<p>Cadastre ferramentas antes de associá-las.</p>"}</fieldset></div>
         <label class="upload">Thumbnail da galeria<input data-thumbnail-input type="file" name="thumbnail" accept="image/png,image/jpeg,image/webp" ${item?.coverImage ? "" : "required"}><span>Imagem de capa que aparecerá no card do projeto.</span><div class="thumbnail-preview">${item?.coverImage ? `<img src="${item.coverImage}" alt="Thumbnail atual">` : ""}</div></label>
         <label class="upload">Galeria de mídias<input data-media-input type="file" name="media" multiple accept="image/*,video/*"><span>Selecione imagens ou vídeos para o projeto e arraste as miniaturas para definir a sequência.</span><div class="media-preview">${(item?.media ?? []).filter(url => !removedMedia.has(url)).map((url, index) => `<div class="media-item"><img draggable="true" data-media-index="${index}" src="${url}" alt="Mídia ${index + 1}"><button type="button" class="remove-media" data-remove-existing-media data-url="${esc(url)}" aria-label="Remover mídia">×</button></div>`).join("")}</div></label>
-        <label class="upload">Recuperar mídias do Cloudinary<textarea name="existingMedia" rows="4" placeholder="Cole aqui uma URL por linha"></textarea><span>Use este campo para reutilizar imagens que já estão no Cloudinary, sem fazer novo upload.</span></label>
         <div class="form-actions"><button type="button" class="secondary" data-action="cancel-project">Cancelar</button><button class="secondary" name="intent" value="draft">Salvar rascunho</button><button class="primary" name="intent" value="published">Salvar e publicar</button></div></form>`;
     }
     return `${header("Projetos", "Adicionar projeto")}<div class="table-wrap"><table><thead><tr><th></th><th>Projeto</th><th>Cliente</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${store.projects.length ? store.projects.map(p => `<tr ${drag("projects", p.id)}><td class="grip">⠿</td><td><strong>${esc(p.title)}</strong></td><td>${esc(p.client || "—")}</td><td>${new Date(p.createdAt).toLocaleDateString("pt-BR")}</td><td>${status(p.status)}</td><td>${action("Editar", "edit-project", p.id)} ${action("Excluir", "delete-project", p.id)}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ainda não há projetos. Clique em “Adicionar projeto”.</td></tr>`}</tbody></table></div>`;
@@ -174,11 +182,12 @@ const { page, mode = "list" } = Astro.props;
     const thumbnail = page?.querySelector<HTMLInputElement>("[data-thumbnail-input]"); const thumbnailPreview = page?.querySelector<HTMLElement>(".thumbnail-preview");
     thumbnail?.addEventListener("change", () => { const file = thumbnail.files?.[0]; if (file && thumbnailPreview) thumbnailPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Prévia da thumbnail">`; });
     const mediaInput = page?.querySelector<HTMLInputElement>("[data-media-input]"); const mediaPreview = page?.querySelector<HTMLElement>(".media-preview");
-    const drawMedia = () => { if (mediaPreview) mediaPreview.innerHTML = selectedMedia.map((file, index) => `<div class="media-item"><img draggable="true" data-file-index="${index}" src="${URL.createObjectURL(file)}" alt="Prévia ${index + 1}"><button type="button" class="remove-media" data-remove-file-index="${index}" aria-label="Remover mídia">×</button></div>`).join(""); };
-    mediaInput?.addEventListener("change", () => { selectedMedia = Array.from(mediaInput.files ?? []); drawMedia(); });
-    mediaPreview?.addEventListener("click", event => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>(".remove-media"); if (!button) return; const url = button.dataset.url; const fileIndex = button.dataset.removeFileIndex; if (url) { removedMedia.add(url); button.closest<HTMLElement>(".media-item")?.remove(); } if (fileIndex !== undefined) { selectedMedia.splice(Number(fileIndex), 1); const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); if (mediaInput) mediaInput.files = transfer.files; drawMedia(); } });
+    const syncMediaInput = () => { if (!mediaInput) return; const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); mediaInput.files = transfer.files; };
+    const drawMedia = () => { if (mediaPreview) mediaPreview.innerHTML = selectedMedia.map((file, index) => { const preview = URL.createObjectURL(file); const asset = file.type.startsWith("video/") ? `<video draggable="true" data-file-index="${index}" src="${preview}" muted preload="metadata"></video>` : `<img draggable="true" data-file-index="${index}" src="${preview}" alt="Prévia ${index + 1}">`; return `<div class="media-item">${asset}<button type="button" class="remove-media" data-remove-file-index="${index}" aria-label="Remover mídia">×</button></div>`; }).join(""); };
+    mediaInput?.addEventListener("change", () => { const added = Array.from(mediaInput.files ?? []); const known = new Set(selectedMedia.map(file => `${file.name}:${file.size}:${file.lastModified}`)); selectedMedia.push(...added.filter(file => !known.has(`${file.name}:${file.size}:${file.lastModified}`))); syncMediaInput(); drawMedia(); });
+    mediaPreview?.addEventListener("click", event => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>(".remove-media"); if (!button) return; const url = button.dataset.url; const fileIndex = button.dataset.removeFileIndex; if (url) { removedMedia.add(url); button.closest<HTMLElement>(".media-item")?.remove(); } if (fileIndex !== undefined) { selectedMedia.splice(Number(fileIndex), 1); syncMediaInput(); drawMedia(); } });
     mediaPreview?.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", (event.target as HTMLElement).dataset.fileIndex || ""));
-    mediaPreview?.addEventListener("dragover", event => event.preventDefault()); mediaPreview?.addEventListener("drop", event => { event.preventDefault(); const from = Number(event.dataTransfer?.getData("text/plain")); const target = (event.target as HTMLElement).closest<HTMLElement>("[data-file-index]"); const to = Number(target?.dataset.fileIndex); if (Number.isInteger(from) && Number.isInteger(to) && from !== to) { selectedMedia.splice(to, 0, selectedMedia.splice(from, 1)[0]); const transfer = new DataTransfer(); selectedMedia.forEach(file => transfer.items.add(file)); if (mediaInput) mediaInput.files = transfer.files; drawMedia(); } });
+    mediaPreview?.addEventListener("dragover", event => event.preventDefault()); mediaPreview?.addEventListener("drop", event => { event.preventDefault(); const from = Number(event.dataTransfer?.getData("text/plain")); const target = (event.target as HTMLElement).closest<HTMLElement>("[data-file-index]"); const to = Number(target?.dataset.fileIndex); if (Number.isInteger(from) && Number.isInteger(to) && from !== to) { selectedMedia.splice(to, 0, selectedMedia.splice(from, 1)[0]); syncMediaInput(); drawMedia(); } });
   }
   page?.addEventListener("click", async event => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
@@ -232,10 +241,9 @@ const { page, mode = "list" } = Astro.props;
         if (thumbnail instanceof File && thumbnail.size) {
           item.coverImage = await uploadFile(thumbnail);
         }
-        const files = data.getAll("media").filter(x => x instanceof File && x.size) as File[];
-        const existingMedia = String(data.get("existingMedia") || "").split(/[\n,]/).map(url => url.trim()).filter(url => /^https?:\/\//i.test(url));
+        const files = selectedMedia;
         if (files.length) item.media = [...item.media, ...await Promise.all(files.map(uploadFile))];
-        item.media = [...new Set([...item.media, ...existingMedia])];
+        item.media = [...new Set(item.media)];
         const index = store.projects.findIndex(p => p.id === item.id);
         index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item);
         editingId = item.id;
@@ -272,7 +280,7 @@ const { page, mode = "list" } = Astro.props;
   :global(.thumbnail-preview img) { display:block; width:180px; aspect-ratio:16 / 9; margin-top:12px; object-fit:cover; border-radius:8px; }
   :global(.media-preview) { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
   :global(.media-item) { position:relative; width:92px; height:92px; }
-  :global(.media-preview img) { width:92px; height:92px; object-fit:cover; border:1px solid #777; border-radius:8px; cursor:grab; }
+  :global(.media-preview img), :global(.media-preview video) { width:92px; height:92px; object-fit:cover; border:1px solid #777; border-radius:8px; cursor:grab; }
   :global(.remove-media) { position:absolute; top:-7px; right:-7px; display:grid; place-items:center; width:23px; height:23px; padding:0; border:2px solid #252525; border-radius:50%; background:#ef4557; color:#fff; font-size:18px; line-height:1; cursor:pointer; }
   :global(.tag-label) { display:grid; gap:3px; }
   :global(.tag-label small) { color:#bdb7b7; font-size:13px; }
