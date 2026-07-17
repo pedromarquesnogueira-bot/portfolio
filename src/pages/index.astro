@@ -24,7 +24,7 @@ const projectData = (projects ?? []).map((project) => {
 });
 ---
 <BaseLayout title={settings?.seo_title_pt || "Pedro Marques · Portfólio"} analyticsId="G-QSEVKF5DBS">
-  <header id="menu"><a class="brand" href="#home">PEDRO<span>.MARQUES</span></a><nav><a href="#home">Home</a><a href="#trabalhos">Trabalhos</a><a href="#experiencia">Experiência</a><a href="#contato">Contato</a></nav><button id="menu-toggle" aria-label="Abrir menu"><span></span><span></span><span></span></button></header>
+  <header id="menu"><a class="brand" href="#home">PEDRO<span>.MRKZ</span></a><nav><a href="#home">Home</a><a href="#trabalhos">Trabalhos</a><a href="#experiencia">Experiência</a><a href="#contato">Contato</a></nav><button id="menu-toggle" aria-label="Abrir menu"><span></span><span></span><span></span></button></header>
   <main>
     <section id="home" class="hero" style={`background-image:url('${settings?.hero_banner_url || "/images/hero.png"}')`}><h1>PORTFOLIO <span>CRIATIVO</span></h1></section>
     <section class="areas" aria-label="Áreas de atuação">{areas.map(([number, title, detail]) => <button class="area-card"><span>{number}<i>↙</i></span><strong>{title}</strong><em>{detail.split("|").map((line) => <Fragment>{line}<br /></Fragment>)}</em></button>)}</section>
