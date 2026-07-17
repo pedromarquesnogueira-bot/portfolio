@@ -40,9 +40,10 @@ const { page, mode = "list" } = Astro.props;
     if (!uploaded.secure_url) throw new Error(`O envio de “${file.name}” não foi concluído.`);
     return String(uploaded.secure_url);
   }
-  async function save(store: Store) {
+  type SaveScope = "tags" | "tools" | "project" | "projects-order" | "experience" | "experiences-order" | "settings";
+  async function save(store: Store, scope: SaveScope, id = "") {
     showFeedback("Salvando alterações...");
-    await sync(store);
+    await sync(store, scope, id);
     localStorage.setItem(key, JSON.stringify(store));
     showFeedback("Alterações salvas.");
   }
@@ -63,27 +64,29 @@ const { page, mode = "list" } = Astro.props;
     }
     if (type === "experience") dbError((await supabase.from("experiences").delete().eq("id", id)).error);
   }
-  async function sync(store: Store) {
+  async function sync(store: Store, scope: SaveScope, id = "") {
     const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
     const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name), icon_url: tool.iconUrl || null }));
     const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, slug: slugify(project.title), client: project.client || null, description: project.description || null, cover_image: project.coverImage || null, published: project.status === "published", featured: false, sort_order }));
     const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, description: experience.description || null, start_date: monthToDate(experience.start), end_date: experience.current ? null : monthToDate(experience.end), current_job: experience.current, published: experience.status === "published", sort_order }));
     const settings = store.settings;
-    // O painel salva uma cópia completa do conteúdo. Remover primeiro os vínculos
-    // evita que itens excluídos reapareçam quando a página consulta o banco novamente.
-    dbError((await supabase.from("project_tags").delete().not("project_id", "is", null)).error);
-    dbError((await supabase.from("project_tools").delete().not("project_id", "is", null)).error);
-    dbError((await supabase.from("project_images").delete().not("project_id", "is", null)).error);
-    dbError((await supabase.from("projects").delete().not("id", "is", null)).error);
-    dbError((await supabase.from("experiences").delete().not("id", "is", null)).error);
-    dbError((await supabase.from("tags").delete().not("id", "is", null)).error);
-    dbError((await supabase.from("tools").delete().not("id", "is", null)).error);
-    if (tagRows.length) dbError((await supabase.from("tags").insert(tagRows)).error);
-    if (toolRows.length) dbError((await supabase.from("tools").insert(toolRows)).error);
-    if (projectRows.length) dbError((await supabase.from("projects").insert(projectRows)).error);
-    if (experienceRows.length) dbError((await supabase.from("experiences").insert(experienceRows)).error);
-    dbError((await supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null })).error);
-    for (const project of store.projects) {
+    if (scope === "tags" && tagRows.length) dbError((await supabase.from("tags").upsert(tagRows)).error);
+    if (scope === "tools" && toolRows.length) dbError((await supabase.from("tools").upsert(toolRows)).error);
+    if (scope === "projects-order" && projectRows.length) dbError((await supabase.from("projects").upsert(projectRows)).error);
+    if (scope === "experiences-order" && experienceRows.length) dbError((await supabase.from("experiences").upsert(experienceRows)).error);
+    if (scope === "experience") {
+      const row = experienceRows.find(item => item.id === id);
+      if (row) dbError((await supabase.from("experiences").upsert(row)).error);
+    }
+    if (scope === "settings") dbError((await supabase.from("site_settings").upsert({ id: true, name: settings.name, role: settings.role, email: settings.email || null, whatsapp: settings.whatsapp || null, linkedin: settings.linkedin || null, behance: settings.behance || null, about_pt: settings.about || null, seo_title_pt: settings.siteTitle || null, seo_description_pt: settings.seoDescription || null, seo_keywords_pt: settings.keywords || null })).error);
+    if (scope === "project") {
+      const project = store.projects.find(item => item.id === id);
+      const row = projectRows.find(item => item.id === id);
+      if (!project || !row) return;
+      dbError((await supabase.from("projects").upsert(row)).error);
+      dbError((await supabase.from("project_tags").delete().eq("project_id", id)).error);
+      dbError((await supabase.from("project_tools").delete().eq("project_id", id)).error);
+      dbError((await supabase.from("project_images").delete().eq("project_id", id)).error);
       const projectTags = Array.isArray(project.tags) ? project.tags : [];
       const projectTools = Array.isArray(project.tools) ? project.tools : [];
       const projectMedia = Array.isArray(project.media) ? project.media : [];
@@ -119,7 +122,7 @@ const { page, mode = "list" } = Astro.props;
     localStorage.setItem(key, JSON.stringify(remote));
     if (recoverCachedRelations) {
       showFeedback("Restaurando imagens, tags e ferramentas...");
-      await sync(remote);
+      for (const project of remote.projects) await sync(remote, "project", project.id);
       showFeedback("Imagens, tags e ferramentas restauradas.");
     }
     render();
@@ -161,7 +164,7 @@ const { page, mode = "list" } = Astro.props;
   function renderSettings(store: Store) { const s = store.settings; return `${header("Configurações")}<form data-form="settings" class="settings"><section class="card"><h2>Dados pessoais</h2><div class="form-grid"><label>Nome<input name="name" value="${esc(s.name)}"></label><label>Cargo<input name="role" value="${esc(s.role)}"></label><label>E-mail<input name="email" type="email" value="${esc(s.email)}"></label><label>WhatsApp<input name="whatsapp" value="${esc(s.whatsapp)}"></label><label>LinkedIn<input name="linkedin" value="${esc(s.linkedin)}"></label><label>Behance<input name="behance" value="${esc(s.behance)}"></label></div><label>Texto sobre mim<textarea name="about" rows="7">${esc(s.about)}</textarea></label></section><section class="card"><h2>SEO</h2><label>Título do site<input name="siteTitle" value="${esc(s.siteTitle)}"></label><label>Descrição<textarea name="seoDescription" rows="4">${esc(s.seoDescription)}</textarea></label><label>Palavras-chave<input name="keywords" value="${esc(s.keywords)}"></label><p class="hint">Os uploads de hero banner e favicon serão ativados ao configurar o Cloudinary.</p></section><div class="form-actions"><button class="primary">Salvar e publicar</button></div></form>`; }
   function render() { if (!page) return; const store = load(); page.innerHTML = pageName === "tags" ? renderTags(store) : pageName === "tools" ? renderTools(store) : pageName === "experience" ? renderExperience(store) : pageName === "settings" ? renderSettings(store) : renderProjects(store); bind(); }
   function bind() {
-    page?.querySelectorAll<HTMLElement>("[draggable]").forEach(row => { row.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", row.dataset.id || "")); row.addEventListener("dragover", event => event.preventDefault()); row.addEventListener("drop", event => { event.preventDefault(); const source = event.dataTransfer?.getData("text/plain"), kind = row.dataset.dragKind; if (!source || !kind || source === row.dataset.id) return; const store = load(), list = kind === "projects" ? store.projects : store.experiences; const a = list.findIndex(x => x.id === source), b = list.findIndex(x => x.id === row.dataset.id); if (a >= 0 && b >= 0) { list.splice(b, 0, list.splice(a, 1)[0]); save(store); render(); } }); });
+    page?.querySelectorAll<HTMLElement>("[draggable]").forEach(row => { row.addEventListener("dragstart", event => event.dataTransfer?.setData("text/plain", row.dataset.id || "")); row.addEventListener("dragover", event => event.preventDefault()); row.addEventListener("drop", event => { event.preventDefault(); const source = event.dataTransfer?.getData("text/plain"), kind = row.dataset.dragKind; if (!source || !kind || source === row.dataset.id) return; const store = load(), list = kind === "projects" ? store.projects : store.experiences; const a = list.findIndex(x => x.id === source), b = list.findIndex(x => x.id === row.dataset.id); if (a >= 0 && b >= 0) { list.splice(b, 0, list.splice(a, 1)[0]); save(store, kind === "projects" ? "projects-order" : "experiences-order"); render(); } }); });
     const thumbnail = page?.querySelector<HTMLInputElement>("[data-thumbnail-input]"); const thumbnailPreview = page?.querySelector<HTMLElement>(".thumbnail-preview");
     thumbnail?.addEventListener("change", () => { const file = thumbnail.files?.[0]; if (file && thumbnailPreview) thumbnailPreview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Prévia da thumbnail">`; });
     const mediaInput = page?.querySelector<HTMLInputElement>("[data-media-input]"); const mediaPreview = page?.querySelector<HTMLElement>(".media-preview");
@@ -220,14 +223,17 @@ const { page, mode = "list" } = Astro.props;
         if (files.length) item.media = [...item.media, ...await Promise.all(files.map(uploadFile))];
         const index = store.projects.findIndex(p => p.id === item.id);
         index >= 0 ? store.projects.splice(index, 1, item) : store.projects.unshift(item);
+        editingId = item.id;
       }
       if (type === "experience") {
         const item: Experience = { id: editingId || uid(), company: String(data.get("company")), role: String(data.get("role")), description: String(data.get("description")), start: String(data.get("start")), end: String(data.get("end")), current: data.get("current") === "on", status: intent === "draft" ? "draft" : "published" };
         const index = store.experiences.findIndex(e => e.id === item.id);
         index >= 0 ? store.experiences.splice(index, 1, item) : store.experiences.unshift(item);
+        editingId = item.id;
       }
       if (type === "settings") store.settings = { ...store.settings, ...Object.fromEntries(data.entries()) as Record<string, string> };
-      await save(store);
+      const scope: SaveScope = type === "tag" ? "tags" : type === "tool" ? "tools" : type === "project" ? "project" : type === "experience" ? "experience" : "settings";
+      await save(store, scope, editingId);
       if (type === "project") { projectForm = false; editingId = ""; selectedMedia = []; removedMedia = new Set(); }
       if (type === "experience") { experienceForm = false; editingId = ""; }
       render();
