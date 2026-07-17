@@ -11,7 +11,7 @@ const { page, mode = "list" } = Astro.props;
 <script>
   import { createClient } from "@supabase/supabase-js";
 
-  type Tag = { id: string; name: string };
+  type Tag = { id: string; name: string; nameEn: string };
   type Tool = { id: string; name: string; iconUrl: string };
   type Project = { id: string; title: string; titleEn: string; client: string; description: string; descriptionEn: string; status: "draft" | "published"; createdAt: string; tags: string[]; tools: string[]; media: string[]; coverImage: string };
   type Experience = { id: string; company: string; role: string; roleEn: string; description: string; descriptionEn: string; start: string; end: string; current: boolean; status: "draft" | "published" };
@@ -20,7 +20,7 @@ const { page, mode = "list" } = Astro.props;
   const supabase = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
   const uid = () => crypto.randomUUID();
   const defaults = (): Store => ({
-    tags: [{ id: uid(), name: "Branding" }, { id: uid(), name: "Design digital" }, { id: uid(), name: "Social media" }],
+    tags: [{ id: uid(), name: "Branding", nameEn: "Branding" }, { id: uid(), name: "Design digital", nameEn: "Digital design" }, { id: uid(), name: "Social media", nameEn: "Social media" }],
     tools: [],
     projects: [], experiences: [], settings: { name: "Pedro Marques", role: "Designer", roleEn: "", email: "", whatsapp: "", linkedin: "", behance: "", about: "", aboutEn: "", siteTitle: "Pedro Marques", siteTitleEn: "", seoDescription: "", seoDescriptionEn: "", keywords: "", keywordsEn: "" }
   });
@@ -65,7 +65,7 @@ const { page, mode = "list" } = Astro.props;
     if (type === "experience") dbError((await supabase.from("experiences").delete().eq("id", id)).error);
   }
   async function sync(store: Store, scope: SaveScope, id = "") {
-    const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, slug: slugify(tag.name) }));
+    const tagRows = store.tags.map(tag => ({ id: tag.id, name: tag.name, name_en: tag.nameEn || null, slug: slugify(tag.name) }));
     const toolRows = store.tools.map(tool => ({ id: tool.id, name: tool.name, slug: slugify(tool.name), icon_url: tool.iconUrl || null }));
     const projectRows = store.projects.map((project, sort_order) => ({ id: project.id, title: project.title, title_en: project.titleEn || null, slug: slugify(project.title), client: project.client || null, description: project.description || null, description_en: project.descriptionEn || null, cover_image: project.coverImage || null, published: project.status === "published", featured: false, sort_order }));
     const experienceRows = store.experiences.map((experience, sort_order) => ({ id: experience.id, company: experience.company, position: experience.role, position_en: experience.roleEn || null, description: experience.description || null, description_en: experience.descriptionEn || null, start_date: monthToDate(experience.start), end_date: experience.current ? null : monthToDate(experience.end), current_job: experience.current, published: experience.status === "published", sort_order }));
@@ -97,7 +97,7 @@ const { page, mode = "list" } = Astro.props;
   }
   async function hydrate() {
     const [tags, tools, projects, projectMedia, experiences, settings, projectTags, projectTools] = await Promise.all([
-      supabase.from("tags").select("id,name").order("name"), supabase.from("tools").select("id,name,icon_url").order("name"),
+      supabase.from("tags").select("id,name,name_en").order("name"), supabase.from("tools").select("id,name,icon_url").order("name"),
       supabase.from("projects").select("id,title,title_en,client,description,description_en,cover_image,published,created_at").order("sort_order"), supabase.from("project_images").select("project_id,image_url").order("sort_order"),
       supabase.from("experiences").select("id,company,position,position_en,description,description_en,start_date,end_date,current_job,published").order("sort_order"),
       supabase.from("site_settings").select("*").eq("id", true).maybeSingle(), supabase.from("project_tags").select("project_id,tag_id"), supabase.from("project_tools").select("project_id,tool_id"),
@@ -111,7 +111,7 @@ const { page, mode = "list" } = Astro.props;
     // conserva a cópia local mais completa em vez de apagar imagens, tags e ferramentas.
     const recoverCachedRelations = remoteRelations === 0 && cachedRelations > 0;
     const remote: Store = {
-      tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, iconUrl: tool.icon_url ?? "" })),
+      tags: (tags.data ?? []).map(tag => ({ id: tag.id, name: tag.name, nameEn: tag.name_en ?? "" })), tools: (tools.data ?? []).map(tool => ({ id: tool.id, name: tool.name, iconUrl: tool.icon_url ?? "" })),
       projects: (projects.data ?? []).map(project => {
         const cachedProject = cached.projects.find(item => item.id === project.id);
         return { id: project.id, title: project.title, titleEn: project.title_en ?? "", client: project.client ?? "", description: project.description ?? "", descriptionEn: project.description_en ?? "", status: project.published ? "published" : "draft", createdAt: project.created_at ?? new Date().toISOString(), tags: recoverCachedRelations ? (cachedProject?.tags ?? []) : (projectTags.data ?? []).filter(row => row.project_id === project.id).map(row => row.tag_id), tools: recoverCachedRelations ? (cachedProject?.tools ?? []) : (projectTools.data ?? []).filter(row => row.project_id === project.id).map(row => row.tool_id), media: recoverCachedRelations ? (cachedProject?.media ?? []) : (projectMedia.data ?? []).filter(image => image.project_id === project.id).map(image => image.image_url), coverImage: project.cover_image ?? "" };
@@ -134,6 +134,7 @@ const { page, mode = "list" } = Astro.props;
   let projectForm = initialForm;
   let experienceForm = initialForm;
   let editingId = "";
+  let editingTagId = "";
   let selectedMedia: File[] = [];
   let removedMedia = new Set<string>();
 
@@ -157,7 +158,10 @@ const { page, mode = "list" } = Astro.props;
     }
     return `${header("Projetos", "Adicionar projeto")}<div class="table-wrap"><table><thead><tr><th></th><th>Projeto</th><th>Cliente</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${store.projects.length ? store.projects.map(p => `<tr ${drag("projects", p.id)}><td class="grip">⠿</td><td><strong>${esc(p.title)}</strong></td><td>${esc(p.client || "—")}</td><td>${new Date(p.createdAt).toLocaleDateString("pt-BR")}</td><td>${status(p.status)}</td><td>${action("Editar", "edit-project", p.id)} ${action("Excluir", "delete-project", p.id)}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">Ainda não há projetos. Clique em “Adicionar projeto”.</td></tr>`}</tbody></table></div>`;
   }
-  function renderTags(store: Store) { return `${header("Tags")}<div class="two-columns"><form data-form="tag" class="card"><label>Nome da tag<input required name="name" placeholder="Ex.: Design gráfico"></label><button class="primary">Salvar tag</button></form><section class="card"><h2>Lista de tags</h2><ul class="plain-list">${store.tags.map(t => `<li>${esc(t.name)}${action("Excluir", "delete-tag", t.id)}</li>`).join("") || "<li>Nenhuma tag cadastrada.</li>"}</ul></section></div>`; }
+  function renderTags(store: Store) {
+    const item = store.tags.find(tag => tag.id === editingTagId);
+    return `${header("Tags")}<div class="two-columns"><form data-form="tag" class="card"><h2>${item ? "Editar tag" : "Nova tag"}</h2><label>Nome da tag<input required name="name" value="${esc(item?.name)}" placeholder="Ex.: Design gráfico"></label><label>Nome da tag em inglês<input name="nameEn" value="${esc(item?.nameEn)}" placeholder="Ex.: Graphic design"></label><p class="hint">O nome em inglês será exibido no site em inglês.</p><div class="form-actions">${item ? `<button type="button" class="secondary" data-action="cancel-tag">Cancelar</button>` : ""}<button class="primary">${item ? "Atualizar tag" : "Salvar tag"}</button></div></form><section class="card"><h2>Lista de tags</h2><ul class="plain-list">${store.tags.map(t => `<li><span class="tag-label"><strong>${esc(t.name)}</strong><small>${esc(t.nameEn || "Sem versão em inglês")}</small></span>${action("Editar", "edit-tag", t.id)}${action("Excluir", "delete-tag", t.id)}</li>`).join("") || "<li>Nenhuma tag cadastrada.</li>"}</ul></section></div>`;
+  }
   function renderTools(store: Store) { return `${header("Ferramentas")}<div class="two-columns"><form data-form="tool" class="card"><label>Nome da ferramenta<input required name="name" placeholder="Ex.: Photoshop"></label><label>Ícone da ferramenta<input required name="icon" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"><span class="hint">PNG, JPG, SVG ou WebP.</span></label><button class="primary">Salvar ferramenta</button></form><section class="card"><h2>Lista de ferramentas</h2><ul class="plain-list">${store.tools.map(t => `<li>${t.iconUrl ? `<img class="tool-icon" src="${esc(t.iconUrl)}" alt="">` : `<span class="tool-icon placeholder">?</span>`}${esc(t.name)}${action("Excluir", "delete-tool", t.id)}</li>`).join("") || "<li>Nenhuma ferramenta cadastrada.</li>"}</ul></section></div>`; }
   function renderExperience(store: Store) {
     if (experienceForm) { const item = store.experiences.find(e => e.id === editingId); return `${header(item ? "Editar experiência" : "Nova experiência")}<form data-form="experience" class="editor"><div class="form-grid two"><label>Nome da empresa<input required name="company" value="${esc(item?.company)}"></label><label>Cargo<input required name="role" value="${esc(item?.role)}"></label><label>Data de início<input required type="month" name="start" value="${esc(item?.start)}"></label><label>Data final<input type="month" name="end" value="${esc(item?.end)}"></label></div><label class="check"><input type="checkbox" name="current" ${item?.current ? "checked" : ""}> Experiência atual</label><label>Descrição<textarea name="description" rows="6">${esc(item?.description)}</textarea></label><fieldset><legend>Versão em inglês</legend><div class="form-grid two"><label>Cargo em inglês<input name="roleEn" value="${esc(item?.roleEn)}" placeholder="Ex.: Art Director"></label><label>Descrição em inglês<textarea name="descriptionEn" rows="4" placeholder="English description">${esc(item?.descriptionEn)}</textarea></label></div></fieldset><div class="form-actions"><button type="button" class="secondary" data-action="cancel-experience">Cancelar</button><button class="secondary" name="intent" value="draft">Salvar rascunho</button><button class="primary" name="intent" value="published">Salvar e publicar</button></div></form>`; }
@@ -185,8 +189,10 @@ const { page, mode = "list" } = Astro.props;
     if (actionName === "Adicionar experiência") { experienceForm = true; editingId = ""; render(); return; }
     if (actionName === "cancel-project") { projectForm = false; selectedMedia = []; removedMedia = new Set(); render(); return; }
     if (actionName === "cancel-experience") { experienceForm = false; render(); return; }
+    if (actionName === "cancel-tag") { editingTagId = ""; render(); return; }
     if (actionName === "edit-project") { projectForm = true; editingId = id; selectedMedia = []; removedMedia = new Set(); render(); return; }
     if (actionName === "edit-experience") { experienceForm = true; editingId = id; render(); return; }
+    if (actionName === "edit-tag") { editingTagId = id; render(); return; }
     if (!actionName.startsWith("delete-") || !confirm("Excluir este registro?")) return;
     const type = actionName.replace("delete-", "");
     try {
@@ -208,7 +214,12 @@ const { page, mode = "list" } = Astro.props;
     const intent = submitter instanceof HTMLButtonElement ? submitter.value : "published";
     try {
       showFeedback(type === "project" || type === "tool" ? "Enviando arquivos..." : "Preparando alterações...");
-      if (type === "tag") store.tags.push({ id: uid(), name: String(data.get("name")) });
+      if (type === "tag") {
+        const item: Tag = { id: editingTagId || uid(), name: String(data.get("name")).trim(), nameEn: String(data.get("nameEn") || "").trim() };
+        const index = store.tags.findIndex(tag => tag.id === item.id);
+        index >= 0 ? store.tags.splice(index, 1, item) : store.tags.push(item);
+        editingTagId = "";
+      }
       if (type === "tool") {
         const file = data.get("icon");
         if (!(file instanceof File) || !file.size) return;
@@ -263,4 +274,6 @@ const { page, mode = "list" } = Astro.props;
   :global(.media-item) { position:relative; width:92px; height:92px; }
   :global(.media-preview img) { width:92px; height:92px; object-fit:cover; border:1px solid #777; border-radius:8px; cursor:grab; }
   :global(.remove-media) { position:absolute; top:-7px; right:-7px; display:grid; place-items:center; width:23px; height:23px; padding:0; border:2px solid #252525; border-radius:50%; background:#ef4557; color:#fff; font-size:18px; line-height:1; cursor:pointer; }
+  :global(.tag-label) { display:grid; gap:3px; }
+  :global(.tag-label small) { color:#bdb7b7; font-size:13px; }
 </style>
