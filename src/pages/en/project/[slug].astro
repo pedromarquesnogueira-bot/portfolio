@@ -1,0 +1,4 @@
+---
+const { slug = "" } = Astro.params;
+return Astro.redirect(`/en/?projeto=${encodeURIComponent(slug)}`, 302);
+---
