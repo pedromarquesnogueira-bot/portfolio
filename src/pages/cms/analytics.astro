@@ -4,15 +4,87 @@ import CMSLayout from "@layouts/CMSLayout.astro";
 
 <CMSLayout>
   <section class="analytics-page">
-    <h1>ANALYTICS</h1>
-    <p>Acompanhe as visitas e o desempenho do site no Google Analytics.</p>
-    <a href="https://analytics.google.com/analytics/web/" target="_blank" rel="noreferrer">Abrir Google Analytics</a>
+    <div class="heading">
+      <div>
+        <h1>ANALYTICS</h1>
+        <p>Acompanhe as visitas e o desempenho do site.</p>
+      </div>
+      <a href="https://analytics.google.com/analytics/web/" target="_blank" rel="noreferrer">Abrir Google Analytics ↗</a>
+    </div>
+
+    <div class="notice" data-notice>Carregando os dados do Google Analytics…</div>
+    <div class="dashboard" data-dashboard hidden>
+      <div class="cards">
+        <article><span>VISITANTES AGORA</span><strong data-active>—</strong><small>Em tempo real</small></article>
+        <article><span>VISITANTES HOJE</span><strong data-today>—</strong><small>Desde meia-noite</small></article>
+        <article><span>VISITANTES</span><strong data-total>—</strong><small>Últimos 30 dias</small></article>
+        <article><span>EVENTOS DE CLIQUE</span><strong data-clicks>—</strong><small>Últimos 30 dias</small></article>
+        <article><span>NOVOS USUÁRIOS</span><strong data-new>—</strong><small>Últimos 30 dias</small></article>
+        <article><span>RECORRENTES</span><strong data-returning>—</strong><small>Últimos 30 dias</small></article>
+        <article><span>SCROLL PROFUNDO</span><strong data-scroll>—</strong><small>Eventos de rolagem (90%)</small></article>
+      </div>
+      <div class="reports">
+        <article><h2>CANAIS DE TRÁFEGO</h2><ul data-channels></ul></article>
+        <article><h2>TEMPO DE ENGAJAMENTO POR PÁGINA</h2><ul data-engagement></ul></article>
+      </div>
+      <p class="updated" data-updated></p>
+    </div>
   </section>
 </CMSLayout>
 
+<script>
+  import { createClient } from "@supabase/supabase-js";
+  const supabase = createClient(import.meta.env.PUBLIC_SUPABASE_URL, import.meta.env.PUBLIC_SUPABASE_ANON_KEY);
+  const notice = document.querySelector<HTMLElement>("[data-notice]");
+  const dashboard = document.querySelector<HTMLElement>("[data-dashboard]");
+  const set = (selector: string, value: number | string) => {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element) element.textContent = new Intl.NumberFormat("pt-BR").format(Number(value));
+  };
+  const seconds = (value: number) => `${Math.floor(value / 60)}min ${Math.round(value % 60)}s`;
+
+  const load = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch("/api/cms/analytics", { headers: { authorization: `Bearer ${session?.access_token ?? ""}` } });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      notice!.textContent = data.error ?? "Não foi possível carregar os dados agora.";
+      return;
+    }
+    if (!data.configured) {
+      notice!.innerHTML = "O painel está pronto. Falta conectar a leitura segura do Google Analytics para exibir os números reais.";
+      return;
+    }
+    set("[data-active]", data.activeNow); set("[data-today]", data.visitorsToday); set("[data-total]", data.visitors30Days);
+    set("[data-clicks]", data.clickEvents); set("[data-new]", data.newUsers); set("[data-returning]", data.returningUsers); set("[data-scroll]", data.scrollEvents);
+    const channelList = document.querySelector("[data-channels]")!;
+    channelList.innerHTML = data.channels.map((item: any) => `<li><span>${item.name}</span><b>${new Intl.NumberFormat("pt-BR").format(item.value)}</b></li>`).join("") || "<li>Sem dados ainda.</li>";
+    const engagementList = document.querySelector("[data-engagement]")!;
+    engagementList.innerHTML = data.engagement.map((item: any) => `<li><span>${item.title}</span><b>${seconds(item.seconds)}</b></li>`).join("") || "<li>Sem dados ainda.</li>";
+    document.querySelector<HTMLElement>("[data-updated]")!.textContent = `Atualizado às ${new Date(data.updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`;
+    notice!.hidden = true; dashboard!.hidden = false;
+  };
+  load().catch(() => { if (notice) notice.textContent = "Não foi possível carregar os dados agora."; });
+</script>
+
 <style>
-  .analytics-page { max-width: 760px; padding: 20px 0; }
+  .analytics-page { max-width: 1280px; padding: 20px 0; }
+  .heading { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:28px; }
   h1 { margin: 0 0 20px; color: #e0ed65; font-size: 42px; }
-  p { margin: 0 0 28px; color: #f7f5f2; font-size: 18px; }
-  a { display: inline-block; border-radius: 12px; background: #e0ed65; color: #151515; padding: 14px 20px; font-size: 16px; font-weight: 800; text-decoration: none; }
+  p { margin: 0; color: #f7f5f2; font-size: 18px; }
+  a { display: inline-block; white-space:nowrap; border-radius: 12px; background: #e0ed65; color: #151515; padding: 14px 20px; font-size: 16px; font-weight: 800; text-decoration: none; }
+  .notice { border:1px solid #5c5c5c; border-radius:16px; color:#c7c4c0; padding:22px; font-size:16px; }
+  .cards { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
+  .cards article, .reports article { background:#292929; border:1px solid #505050; border-radius:16px; padding:20px; }
+  .cards span, h2 { color:#c7c4c0; font-size:13px; font-weight:900; }
+  .cards strong { display:block; color:#e0ed65; font-size:38px; line-height:1; margin:14px 0 8px; }
+  .cards small { color:#c7c4c0; font-size:13px; }
+  .reports { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+  h2 { margin:0 0 14px; font-size:16px; color:#f7f5f2; }
+  ul { list-style:none; padding:0; margin:0; }
+  li { display:flex; justify-content:space-between; gap:18px; border-top:1px solid #505050; color:#f7f5f2; padding:12px 0; font-size:15px; }
+  li span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } li b { color:#e0ed65; white-space:nowrap; }
+  .updated { color:#aaa; font-size:13px; margin-top:14px; }
+  @media(max-width:900px) { .cards { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+  @media(max-width:600px) { .heading, .reports { grid-template-columns:1fr; display:grid; } .heading a { width:max-content; } .cards { grid-template-columns:1fr; } }
 </style>
