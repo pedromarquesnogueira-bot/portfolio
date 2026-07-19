@@ -47,21 +47,38 @@ const projectData = (projects ?? []).map((project) => {
   gallery?.addEventListener("click", event => { const id=event.target.closest("[data-id]")?.dataset.id; const project=projects.find(item=>item.id===id); if(!project)return; history.pushState({}, "", `/en/project/${encodeURIComponent(projectKey(project))}`); openProject(project); });
   const clearProjectUrl = () => { if (location.pathname.startsWith("/en/project/")) history.replaceState({}, "", "/en/"); };
   document.querySelector("#close-modal")?.addEventListener("click",()=>modal?.close()); modal?.addEventListener("click",e=>{if(e.target===modal)modal.close()}); modal?.addEventListener("close",clearProjectUrl);
-  let lastY=scrollY; const menu=document.querySelector("#menu"); addEventListener("scroll",()=>{menu?.classList.toggle("hidden",scrollY>lastY&&scrollY>90);lastY=scrollY},{passive:true}); addEventListener("mousemove",(event)=>{if(event.clientY<=90) menu?.classList.remove("hidden")},{passive:true}); document.querySelector("#menu-toggle")?.addEventListener("click",()=>menu?.classList.toggle("open")); menu?.querySelector("nav")?.addEventListener("click",()=>menu?.classList.remove("open"));
+  let lastY = scrollY;
+  let smoothScrolling = false;
+  const menu = document.querySelector("#menu");
+  addEventListener("scroll", () => {
+    if (!smoothScrolling) menu?.classList.toggle("hidden", scrollY > lastY && scrollY > 90);
+    lastY = scrollY;
+  }, { passive: true });
+  addEventListener("mousemove", (event) => { if (event.clientY <= 90) menu?.classList.remove("hidden"); }, { passive: true });
+  document.querySelector("#menu-toggle")?.addEventListener("click", () => menu?.classList.toggle("open"));
+  menu?.querySelector("nav")?.addEventListener("click", () => menu?.classList.remove("open"));
   const scrollToSection = hash => {
     const target = document.querySelector(hash);
     if (!target) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { target.scrollIntoView(); return; }
     const start = window.scrollY;
-    const destination = Math.max(0, target.getBoundingClientRect().top + start);
+    const menuHeight = menu?.getBoundingClientRect().height || 0;
+    const destination = Math.max(0, target.getBoundingClientRect().top + start - menuHeight);
     const distance = destination - start;
-    const duration = Math.min(950, Math.max(420, Math.abs(distance) * .42));
+    if (Math.abs(distance) < 2) return;
+    const duration = Math.min(1300, Math.max(550, Math.abs(distance) * .45));
     const startedAt = performance.now();
-    const easeOutCubic = progress => 1 - Math.pow(1 - progress, 3);
+    const easeOutQuart = progress => 1 - Math.pow(1 - progress, 4);
+    smoothScrolling = true;
+    menu?.classList.remove("hidden");
     const animate = now => {
       const progress = Math.min(1, (now - startedAt) / duration);
-      window.scrollTo({ top: start + distance * easeOutCubic(progress), behavior: "auto" });
+      window.scrollTo(0, start + distance * easeOutQuart(progress));
       if (progress < 1) requestAnimationFrame(animate);
+      else {
+        window.scrollTo(0, destination);
+        smoothScrolling = false;
+        lastY = destination;
+      }
     };
     requestAnimationFrame(animate);
   };
