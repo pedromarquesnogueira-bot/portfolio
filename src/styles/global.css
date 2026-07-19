@@ -9,7 +9,7 @@
 
 html {
   font-family: Arial, sans-serif;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
