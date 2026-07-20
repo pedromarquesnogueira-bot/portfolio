@@ -49,6 +49,31 @@ async function isCMSUser(request: Request) {
   return response.ok;
 }
 
+async function getProjectTitles() {
+  const url = process.env.PUBLIC_SUPABASE_URL;
+  const key = process.env.PUBLIC_SUPABASE_ANON_KEY;
+  const titles = new Map<string, string>();
+  if (!url || !key) return titles;
+
+  const response = await fetch(`${url}/rest/v1/projects?select=id,slug,title,title_en&published=eq.true`, {
+    headers: { apikey: key, authorization: `Bearer ${key}` },
+  });
+  if (!response.ok) return titles;
+
+  for (const project of await response.json()) {
+    const title = project.title || project.title_en || "Projeto sem título";
+    for (const identifier of [project.id, project.slug]) {
+      if (identifier) titles.set(String(identifier), title);
+    }
+  }
+  return titles;
+}
+
+function projectIdentifierFromPath(path: string) {
+  const match = path.match(/^\/(?:en\/)?project\/([^/?#]+)/i);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 export const GET: APIRoute = async ({ request }) => {
   if (!(await isCMSUser(request))) return json({ error: "Não autorizado." }, 401);
 
@@ -71,6 +96,7 @@ export const GET: APIRoute = async ({ request }) => {
     const rows = (report: any) => report.rows ?? [];
     const value = (report: any, index = 0) => Number(rows(report)[0]?.metricValues?.[index]?.value ?? 0);
 
+    const projectTitlesRequest = getProjectTitles();
     const [realtime, today, total, audience, scroll, channels, projectViews, clicks] = await Promise.all([
       call("runRealtimeReport", { metrics: [{ name: "activeUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "today", endDate: "today" }], metrics: [{ name: "totalUsers" }] }),
@@ -78,12 +104,23 @@ export const GET: APIRoute = async ({ request }) => {
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "newVsReturning" }], metrics: [{ name: "totalUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "eventName" }], metrics: [{ name: "eventCount" }], dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "scroll" } } } }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "sessionDefaultChannelGroup" }], metrics: [{ name: "sessions" }], limit: 6, orderBys: [{ metric: { metricName: "sessions" }, desc: true }] }),
-      call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "pageTitle" }, { name: "pagePath" }], metrics: [{ name: "screenPageViews" }], dimensionFilter: { orGroup: { expressions: [{ filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/projeto/" } } }, { filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/en/project/" } } }] } }, limit: 10, orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }] }),
+      call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "pagePath" }], metrics: [{ name: "screenPageViews" }], dimensionFilter: { orGroup: { expressions: [{ filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/projeto/" } } }, { filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/en/project/" } } }] } }, limit: 100, orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "eventName" }], metrics: [{ name: "eventCount" }], dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "portfolio_click" } } } }),
     ]);
 
     const audienceRows = rows(audience);
     const audienceValue = (label: string) => Number(audienceRows.find((row: any) => row.dimensionValues?.[0]?.value === label)?.metricValues?.[0]?.value ?? 0);
+    const projectTitles = await projectTitlesRequest;
+    const groupedProjectViews = new Map<string, { title: string; views: number }>();
+    for (const row of rows(projectViews)) {
+      const identifier = projectIdentifierFromPath(row.dimensionValues?.[0]?.value ?? "");
+      if (!identifier) continue;
+      const project = groupedProjectViews.get(identifier);
+      groupedProjectViews.set(identifier, {
+        title: projectTitles.get(identifier) ?? "Projeto sem título",
+        views: (project?.views ?? 0) + Number(row.metricValues?.[0]?.value ?? 0),
+      });
+    }
     return json({
       configured: true,
       updatedAt: new Date().toISOString(),
@@ -95,7 +132,7 @@ export const GET: APIRoute = async ({ request }) => {
       scrollEvents: value(scroll),
       clickEvents: value(clicks),
       channels: rows(channels).map((row: any) => ({ name: row.dimensionValues?.[0]?.value ?? "Não definido", value: Number(row.metricValues?.[0]?.value ?? 0) })),
-      projects: rows(projectViews).map((row: any) => ({ title: row.dimensionValues?.[0]?.value || row.dimensionValues?.[1]?.value || "Projeto sem título", views: Number(row.metricValues?.[0]?.value ?? 0) })),
+      projects: [...groupedProjectViews.values()].sort((first, second) => second.views - first.views).slice(0, 10),
     });
   } catch (error) {
     return json({ configured: true, error: error instanceof Error ? error.message : "Não foi possível consultar o Google Analytics." }, 502);
