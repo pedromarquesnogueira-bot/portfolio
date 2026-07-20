@@ -25,7 +25,7 @@ import CMSLayout from "@layouts/CMSLayout.astro";
       </div>
       <div class="reports">
         <article><h2>CANAIS DE TRÁFEGO</h2><ul data-channels></ul></article>
-        <article><h2>TEMPO DE ENGAJAMENTO POR PÁGINA</h2><ul data-engagement></ul></article>
+        <article><h2>PROJETOS MAIS VISUALIZADOS</h2><ul data-projects></ul></article>
       </div>
       <p class="updated" data-updated></p>
     </div>
@@ -41,7 +41,7 @@ import CMSLayout from "@layouts/CMSLayout.astro";
     const element = document.querySelector<HTMLElement>(selector);
     if (element) element.textContent = new Intl.NumberFormat("pt-BR").format(Number(value));
   };
-  const seconds = (value: number) => `${Math.floor(value / 60)}min ${Math.round(value % 60)}s`;
+  const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]!));
 
   const load = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -59,8 +59,8 @@ import CMSLayout from "@layouts/CMSLayout.astro";
     set("[data-clicks]", data.clickEvents); set("[data-new]", data.newUsers); set("[data-returning]", data.returningUsers); set("[data-scroll]", data.scrollEvents);
     const channelList = document.querySelector("[data-channels]")!;
     channelList.innerHTML = data.channels.map((item: any) => `<li class="metric-row"><span>${item.name}</span><b>${new Intl.NumberFormat("pt-BR").format(item.value)}</b></li>`).join("") || "<li class=\"metric-row\">Sem dados ainda.</li>";
-    const engagementList = document.querySelector("[data-engagement]")!;
-    engagementList.innerHTML = data.engagement.map((item: any) => `<li class="metric-row"><span>${item.title}</span><b>${seconds(item.seconds)}</b></li>`).join("") || "<li class=\"metric-row\">Sem dados ainda.</li>";
+    const projectList = document.querySelector("[data-projects]")!;
+    projectList.innerHTML = data.projects.map((item: any) => `<li class="metric-row"><span>${escapeHtml(item.title)}</span><b>${new Intl.NumberFormat("pt-BR").format(item.views)} visualizações</b></li>`).join("") || "<li class=\"metric-row\">Sem visualizações de projetos ainda.</li>";
     document.querySelector<HTMLElement>("[data-updated]")!.textContent = `Atualizado às ${new Date(data.updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`;
     notice!.hidden = true; dashboard!.hidden = false;
   };

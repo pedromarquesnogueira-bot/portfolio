@@ -71,14 +71,14 @@ export const GET: APIRoute = async ({ request }) => {
     const rows = (report: any) => report.rows ?? [];
     const value = (report: any, index = 0) => Number(rows(report)[0]?.metricValues?.[index]?.value ?? 0);
 
-    const [realtime, today, total, audience, scroll, channels, engagement, clicks] = await Promise.all([
+    const [realtime, today, total, audience, scroll, channels, projectViews, clicks] = await Promise.all([
       call("runRealtimeReport", { metrics: [{ name: "activeUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "today", endDate: "today" }], metrics: [{ name: "totalUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], metrics: [{ name: "totalUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "newVsReturning" }], metrics: [{ name: "totalUsers" }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "eventName" }], metrics: [{ name: "eventCount" }], dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "scroll" } } } }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "sessionDefaultChannelGroup" }], metrics: [{ name: "sessions" }], limit: 6, orderBys: [{ metric: { metricName: "sessions" }, desc: true }] }),
-      call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "pageTitle" }, { name: "pagePath" }], metrics: [{ name: "userEngagementDuration" }], limit: 6, orderBys: [{ metric: { metricName: "userEngagementDuration" }, desc: true }] }),
+      call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "pageTitle" }, { name: "pagePath" }], metrics: [{ name: "screenPageViews" }], dimensionFilter: { orGroup: { expressions: [{ filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/projeto/" } } }, { filter: { fieldName: "pagePath", stringFilter: { matchType: "BEGINS_WITH", value: "/en/project/" } } }] } }, limit: 10, orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }] }),
       call("runReport", { dateRanges: [{ startDate: "30daysAgo", endDate: "today" }], dimensions: [{ name: "eventName" }], metrics: [{ name: "eventCount" }], dimensionFilter: { filter: { fieldName: "eventName", stringFilter: { value: "portfolio_click" } } } }),
     ]);
 
@@ -95,7 +95,7 @@ export const GET: APIRoute = async ({ request }) => {
       scrollEvents: value(scroll),
       clickEvents: value(clicks),
       channels: rows(channels).map((row: any) => ({ name: row.dimensionValues?.[0]?.value ?? "Não definido", value: Number(row.metricValues?.[0]?.value ?? 0) })),
-      engagement: rows(engagement).map((row: any) => ({ title: row.dimensionValues?.[0]?.value || row.dimensionValues?.[1]?.value || "Página sem título", seconds: Number(row.metricValues?.[0]?.value ?? 0) })),
+      projects: rows(projectViews).map((row: any) => ({ title: row.dimensionValues?.[0]?.value || row.dimensionValues?.[1]?.value || "Projeto sem título", views: Number(row.metricValues?.[0]?.value ?? 0) })),
     });
   } catch (error) {
     return json({ configured: true, error: error instanceof Error ? error.message : "Não foi possível consultar o Google Analytics." }, 502);
