@@ -58,9 +58,9 @@ import CMSLayout from "@layouts/CMSLayout.astro";
     set("[data-active]", data.activeNow); set("[data-today]", data.visitorsToday); set("[data-total]", data.visitors30Days);
     set("[data-clicks]", data.clickEvents); set("[data-new]", data.newUsers); set("[data-returning]", data.returningUsers); set("[data-scroll]", data.scrollEvents);
     const channelList = document.querySelector("[data-channels]")!;
-    channelList.innerHTML = data.channels.map((item: any) => `<li><span>${item.name}</span><b>${new Intl.NumberFormat("pt-BR").format(item.value)}</b></li>`).join("") || "<li>Sem dados ainda.</li>";
+    channelList.innerHTML = data.channels.map((item: any) => `<li class="metric-row"><span>${item.name}</span><b>${new Intl.NumberFormat("pt-BR").format(item.value)}</b></li>`).join("") || "<li class=\"metric-row\">Sem dados ainda.</li>";
     const engagementList = document.querySelector("[data-engagement]")!;
-    engagementList.innerHTML = data.engagement.map((item: any) => `<li><span>${item.title}</span><b>${seconds(item.seconds)}</b></li>`).join("") || "<li>Sem dados ainda.</li>";
+    engagementList.innerHTML = data.engagement.map((item: any) => `<li class="metric-row"><span>${item.title}</span><b>${seconds(item.seconds)}</b></li>`).join("") || "<li class=\"metric-row\">Sem dados ainda.</li>";
     document.querySelector<HTMLElement>("[data-updated]")!.textContent = `Atualizado às ${new Date(data.updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`;
     notice!.hidden = true; dashboard!.hidden = false;
   };
@@ -81,9 +81,10 @@ import CMSLayout from "@layouts/CMSLayout.astro";
   .cards small { color:#c7c4c0; font-size:13px; }
   .reports { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
   h2 { margin:0 0 14px; font-size:16px; color:#f7f5f2; }
-  ul { list-style:none; padding:0; margin:0; }
-  li { display:flex; justify-content:space-between; gap:18px; border-top:1px solid #505050; color:#f7f5f2; padding:12px 0; font-size:15px; }
-  li span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } li b { color:#e0ed65; white-space:nowrap; }
+  :global(.reports ul) { list-style:none; padding:0; margin:0; }
+  :global(.reports .metric-row) { display:flex; align-items:baseline; justify-content:space-between; gap:18px; border-top:1px solid #505050; color:#f7f5f2; padding:12px 0; font-size:15px; }
+  :global(.reports .metric-row span) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  :global(.reports .metric-row b) { flex:0 0 auto; color:#e0ed65; white-space:nowrap; }
   .updated { color:#aaa; font-size:13px; margin-top:14px; }
   @media(max-width:900px) { .cards { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
   @media(max-width:600px) { .heading, .reports { grid-template-columns:1fr; display:grid; } .heading a { width:max-content; } .cards { grid-template-columns:1fr; } }
