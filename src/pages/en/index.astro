@@ -284,3 +284,12 @@ const projectData = (projects ?? []).map((project) => {
   main .filters label span { color:#2a2a2a !important; font-size:20px; font-weight:800; line-height:1; opacity:1; }
   main .filters #search { width:220px; }
 </style>
+<style is:global>
+  /* Desktop-only grid; tablet and mobile retain their existing columns. */
+  @media (min-width:1201px) and (max-width:1440px) {
+    #gallery { grid-template-columns:repeat(6, minmax(0, 1fr)) !important; }
+  }
+  @media (min-width:1441px) {
+    #gallery { grid-template-columns:repeat(10, minmax(0, 1fr)) !important; }
+  }
+</style>

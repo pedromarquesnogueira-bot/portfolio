@@ -282,3 +282,12 @@ const projectData = (projects ?? []).map((project) => {
   main .filters label { padding:4px 25px 4px 9px !important; }
   main .filters label span { color:#2a2a2a !important; font-size:20px; font-weight:800; line-height:1; opacity:1; }
 </style>
+<style is:global>
+  /* Grade exclusiva para desktop; tablet e mobile mantêm suas colunas atuais. */
+  @media (min-width:1201px) and (max-width:1440px) {
+    #gallery { grid-template-columns:repeat(6, minmax(0, 1fr)) !important; }
+  }
+  @media (min-width:1441px) {
+    #gallery { grid-template-columns:repeat(10, minmax(0, 1fr)) !important; }
+  }
+</style>
